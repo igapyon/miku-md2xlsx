@@ -10,7 +10,7 @@ import {
   withReservedImagePreviewRows
 } from "./xlsx-drawing.ts";
 import { stylesXml } from "./xlsx-styles.ts";
-import { worksheetRelsXml, worksheetXml } from "./xlsx-worksheet.ts";
+import { hasWorksheetRelationships, worksheetRelsXml, worksheetXml } from "./xlsx-worksheet.ts";
 import { xml } from "./xlsx-xml.ts";
 
 function contentTypes(sheetCount: number, drawings: SheetDrawing[]): string {
@@ -101,10 +101,15 @@ export function writeXlsx(workbook: WorkbookModel): Uint8Array {
       path: `xl/worksheets/sheet${index + 1}.xml`,
       data: worksheetXml(sheet, drawingsBySheet.get(index + 1))
     })),
-    ...drawings.map((drawing) => ({
-      path: `xl/worksheets/_rels/sheet${drawing.sheetIndex}.xml.rels`,
-      data: worksheetRelsXml(drawing)
-    })),
+    ...renderWorkbook.sheets.flatMap((sheet, index) => {
+      const drawing = drawingsBySheet.get(index + 1);
+      return hasWorksheetRelationships(sheet, drawing)
+        ? [{
+            path: `xl/worksheets/_rels/sheet${index + 1}.xml.rels`,
+            data: worksheetRelsXml(sheet, drawing)
+          }]
+        : [];
+    }),
     ...drawings.map((drawing) => ({
       path: `xl/drawings/drawing${drawing.drawingIndex}.xml`,
       data: drawingXml(drawing)

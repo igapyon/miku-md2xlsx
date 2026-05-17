@@ -40,7 +40,7 @@ const cases = [
   {
     name: "hyperlink",
     fixture: "hyperlink-basic-sample01.md",
-    tokens: ["[Open example](https://example.com/)", "[Jump to Other](#other) (Other!A1)"]
+    tokens: ["[Open example](https://example.com/)", "Jump to Other", "Other!A1"]
   },
   {
     name: "named-range",

@@ -43,6 +43,24 @@ export function readWorksheetValues(entries, sheetIndex = 1) {
   ));
 }
 
+export function readWorksheetCells(entries, sheetIndex = 1) {
+  const worksheetXml = entries.get(`xl/worksheets/sheet${sheetIndex}.xml`) ?? "";
+  return Array.from(worksheetXml.matchAll(/<c\b([^>]*)>([\s\S]*?)<\/c>/g), (cellMatch) => ({
+    attributes: readXmlAttributes(cellMatch[1]),
+    text: Array.from(cellMatch[2].matchAll(/<t(?:\s[^>]*)?>([\s\S]*?)<\/t>/g), (textMatch) => decodeXml(textMatch[1])).join("")
+  }));
+}
+
+export function readWorksheetMergeRefs(entries, sheetIndex = 1) {
+  const worksheetXml = entries.get(`xl/worksheets/sheet${sheetIndex}.xml`) ?? "";
+  return Array.from(worksheetXml.matchAll(/<mergeCell\b[^>]*\bref="([^"]+)"/g), (match) => decodeXml(match[1]));
+}
+
+export function readWorksheetHyperlinks(entries, sheetIndex = 1) {
+  const worksheetXml = entries.get(`xl/worksheets/sheet${sheetIndex}.xml`) ?? "";
+  return Array.from(worksheetXml.matchAll(/<hyperlink\b([^>]*)\/>/g), (match) => readXmlAttributes(match[1]));
+}
+
 export function readDrawingAnchors(entries, drawingIndex = 1) {
   const drawingXml = entries.get(`xl/drawings/drawing${drawingIndex}.xml`) ?? "";
   return Array.from(drawingXml.matchAll(/<xdr:twoCellAnchor[\s\S]*?<xdr:from>([\s\S]*?)<\/xdr:from>[\s\S]*?<xdr:to>([\s\S]*?)<\/xdr:to>[\s\S]*?<a:blip\b[^>]*\br:embed="([^"]+)"/g), (match) => ({

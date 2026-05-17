@@ -1,4 +1,4 @@
-import { extractText } from "./markdown-parser.ts";
+import { extractCell, extractText } from "./markdown-parser.ts";
 import type { Md2XlsxOptions, RowModel } from "./types.ts";
 
 export function styleRoleForTableCell(rowIndex: number, headerRow: boolean, tableStyle: Md2XlsxOptions["tableStyle"]): RowModel["cells"][number]["styleRole"] {
@@ -22,14 +22,23 @@ export function repairEscapedPipeCells(values: string[], expectedColumns: number
 }
 
 export function tableRows(node: any, headerRow: boolean, tableStyle: Md2XlsxOptions["tableStyle"]): RowModel[] {
-  const rawRows = (node.children ?? []).map((row: any) => (row.children ?? []).map((cell: any) => extractText(cell).trim()));
+  const rawRows = (node.children ?? []).map((row: any) => (row.children ?? []).map((cell: any) => {
+    const content = extractCell(cell);
+    return { ...content, value: content.value.trim() };
+  }));
   const expectedColumns = rawRows[0]?.length ?? 0;
   return rawRows.map((row, rowIndex) => ({
     kind: "table",
-    cells: repairEscapedPipeCells(row, expectedColumns).map((value) => ({
-      value,
-      styleRole: styleRoleForTableCell(rowIndex, headerRow, tableStyle)
-    }))
+    cells: repairEscapedPipeCells(row.map((cell) => cell.value), expectedColumns).map((value, index) => {
+      const sourceCell = row[index];
+      const richTextRuns = sourceCell?.richTextRuns && sourceCell.value === value ? sourceCell.richTextRuns : undefined;
+      return {
+        value,
+        hyperlink: sourceCell?.hyperlink,
+        richTextRuns,
+        styleRole: styleRoleForTableCell(rowIndex, headerRow, tableStyle)
+      };
+    })
   }));
 }
 
@@ -46,7 +55,7 @@ export function paragraphTableRows(text: string, headerRow: boolean, tableStyle:
   return rawRows.map((row, rowIndex) => ({
     kind: "table",
     cells: row.map((value) => ({
-      value,
+      value: value.replace(/<br\s*\/?>/gi, "\n"),
       styleRole: styleRoleForTableCell(rowIndex, headerRow, tableStyle)
     }))
   }));

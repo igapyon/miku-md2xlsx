@@ -60,6 +60,17 @@
   - Hand-written real Markdown coverage now includes blockquote, inline HTML,
     HTML block, nested lists, long code blocks, and multiple tables mixed with
     narrative paragraphs.
+  - Markdown table cell values are kept as strings; numeric/date/currency/
+    percentage-looking text is not inferred, converted, or auto-aligned.
+  - `miku-xlsx2md` merge markers `[←M←]` and `[↑M↑]` are now converted into
+    worksheet merged-cell ranges, and marker cells are blanked in generated
+    worksheet XML.
+  - Single-cell Markdown links are now emitted as worksheet hyperlinks.
+    External links use relationship targets, and `miku-xlsx2md`-style internal
+    links are mapped to the generated workbook sheet/cell location.
+  - Common inline rich text is now emitted as Excel rich text runs:
+    `**bold**`, `*italic*`, `~~strike~~`, `<ins>underline</ins>`, and `<br>`
+    cell-internal line breaks.
   - Verification last run: `npm run fixtures:from-xlsx2md`, `npm run test`,
     `npm run build:all`, `npm run smoke:bundle`, and `git diff --check`.
   - Final verification and handoff summary are updated. Next practical restart
@@ -71,6 +82,26 @@
 - Add more real-document Markdown block coverage after the current focused
   escaped pipe, empty cell, multiline-like table cell, and repository-local
   smoke assertions.
+- Preserve Markdown table cell text semantics.
+  - Keep cell values as strings by default.
+  - Do not infer numeric, date, currency, or percentage types from Markdown
+    text.
+  - Do not auto-align numeric-looking cells.
+  - Limit table presentation improvements to structural styling such as header
+    fill, borders, wrapping, and conservative column width hints.
+- Preserve explicit `miku-xlsx2md` merge markers as worksheet merges.
+  - Convert `[←M←]` and `[↑M↑]` table markers into `mergeCell` ranges.
+  - Keep the source Markdown marker vocabulary as the compatibility contract;
+    do not attempt pixel-perfect restoration of the original workbook layout.
+- Preserve simple Markdown hyperlinks as worksheet hyperlinks.
+  - Convert single-link cells to Excel hyperlinks while using the link label as
+    the visible cell text.
+  - Keep mixed-content or unsupported links as plain text until rich inline run
+    support is added.
+- Preserve common inline rich text as worksheet rich text runs.
+  - Convert `**bold**`, `*italic*`, `~~strike~~`, `<ins>underline</ins>`, and
+    `<br>` into Excel inline string runs and cell-internal line breaks.
+  - Keep unsupported raw HTML as visible text.
 - Maintain `miku-xlsx2md` fixture compatibility coverage.
   - Current source fixture coverage is complete for the checked-in
     `workplace/miku-xlsx2md/tests/fixtures/*.xlsx` set and tracked in
