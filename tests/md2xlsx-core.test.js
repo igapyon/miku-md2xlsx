@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFile } from "node:fs/promises";
 import { md2xlsx, markdownToXlsxModel } from "../dist/core.js";
 import { unzipStoredEntries } from "./helpers/zip.js";
+import { readWorkbookXmlEntries, readWorksheetCells } from "./helpers/xlsx.js";
 
 describe("miku-md2xlsx core", () => {
   it("converts a Markdown table into workbook model rows", () => {
@@ -25,7 +26,38 @@ describe("miku-md2xlsx core", () => {
   it("keeps empty and multiline-like table cell content", () => {
     const model = markdownToXlsxModel("| A | Empty | Multi |\n| --- | --- | --- |\n| x | | line1<br>line2 |\n");
 
-    expect(model.sheets[0].rows[1].cells.map((cell) => cell.value)).toEqual(["x", "", "line1<br>line2"]);
+    expect(model.sheets[0].rows[1].cells.map((cell) => cell.value)).toEqual(["x", "", "line1\nline2"]);
+  });
+
+  it("converts common inline Markdown styles into rich text runs", () => {
+    const model = markdownToXlsxModel("plain **bold** *italic* ~~strike~~ <ins>under</ins> line1<br>line2\n");
+    const cell = model.sheets[0].rows[0].cells[0];
+
+    expect(cell.value).toBe("plain bold italic strike under line1\nline2");
+    expect(cell.richTextRuns).toEqual([
+      { text: "plain " },
+      { text: "bold", bold: true },
+      { text: " " },
+      { text: "italic", italic: true },
+      { text: " " },
+      { text: "strike", strike: true },
+      { text: " " },
+      { text: "under", underline: true },
+      { text: " line1\nline2" }
+    ]);
+  });
+
+  it("writes numeric-looking Markdown table cells as inline strings", () => {
+    const xlsx = md2xlsx("| code | date | percent | amount |\n| --- | --- | --- | --- |\n| 0010 | 2026-05-18 | 98.7% | ¥1,024 |\n");
+    const entries = readWorkbookXmlEntries(xlsx);
+    const cells = readWorksheetCells(entries);
+
+    expect(cells.filter((cell) => ["0010", "2026-05-18", "98.7%", "¥1,024"].includes(cell.text))).toEqual([
+      { attributes: expect.objectContaining({ t: "inlineStr" }), text: "0010" },
+      { attributes: expect.objectContaining({ t: "inlineStr" }), text: "2026-05-18" },
+      { attributes: expect.objectContaining({ t: "inlineStr" }), text: "98.7%" },
+      { attributes: expect.objectContaining({ t: "inlineStr" }), text: "¥1,024" }
+    ]);
   });
 
   it("uses wider column hints for text-heavy block rows", () => {

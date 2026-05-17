@@ -19,6 +19,9 @@ Initial supported Markdown features include:
 - Markdown tables
 - fenced and indented code blocks
 - horizontal rules
+- Markdown links
+- common inline styles: bold, italic, strikethrough, underline via `<ins>`,
+  and `<br>` line breaks inside cells
 - local PNG, JPEG, and GIF images referenced from Markdown
 
 Local images are embedded on a best-effort basis when Markdown image URLs point
@@ -27,10 +30,29 @@ to relative files next to the input Markdown file, such as
 workbook text so the original semantic reference remains visible. Remote URLs,
 absolute paths, and missing local files are left as text references.
 
+Markdown table cell values are written as strings. Numeric-looking, date-like,
+currency-like, and percentage-like text is not inferred or converted into Excel
+number/date cells, so values such as `0010`, `3月13日`, and `98.7%` remain the
+text written in Markdown.
+
+`miku-xlsx2md` merge markers in table cells are converted into Excel merged
+cell ranges. `[←M←]` extends a merge to the left, and `[↑M↑]` extends a merge
+upward.
+
+Markdown links are converted into Excel hyperlinks when a cell contains a single
+link. External links such as `[Open example](https://example.com/)` become
+external hyperlinks. `miku-xlsx2md`-style internal links such as
+`[Jump to Other](#other) (Other!A1)` become workbook hyperlinks to the generated
+sheet/cell target.
+
+Common inline Markdown styles are written as Excel rich text runs. `**bold**`,
+`*italic*`, `~~strike~~`, `<ins>underline</ins>`, and `<br>` are converted to
+cell formatting and cell-internal line breaks.
+
 Known limitations:
 
-- original Excel cell addresses, column widths, row heights, merged cells, and
-  detailed styles are not reconstructed
+- original Excel cell addresses, column widths, row heights, and detailed
+  styles are not reconstructed
 - formulas, charts, drawings, SmartArt, and conditional formatting are not
   generated
 - image anchor positions, sizes, and drawing geometry are not restored exactly

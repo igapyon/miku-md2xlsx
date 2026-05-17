@@ -1,4 +1,4 @@
-import { collectImageRefs, extractText } from "./markdown-parser.ts";
+import { collectImageRefs, extractCell, extractText } from "./markdown-parser.ts";
 import { paragraphTableRows, tableRows } from "./markdown-table-compat.ts";
 import type { Md2XlsxOptions, RowModel } from "./types.ts";
 
@@ -52,7 +52,8 @@ export function blockToRows(node: any, options: Required<Pick<Md2XlsxOptions, "h
     case "heading":
       return [textRow(node.depth === 1 ? "title" : "heading", extractText(node).trim(), node.depth === 1 ? "title" : "heading")];
     case "paragraph": {
-      const text = extractText(node).trim();
+      const cell = extractCell(node);
+      const text = cell.value.trim();
       if (!text) {
         return [];
       }
@@ -61,7 +62,7 @@ export function blockToRows(node: any, options: Required<Pick<Md2XlsxOptions, "h
         return table;
       }
       const imageRefs = collectImageRefs(node);
-      return imageRefs.length ? [imageRow(text, imageRefs)] : [textRow("paragraph", text)];
+      return imageRefs.length ? [imageRow(text, imageRefs)] : [{ kind: "paragraph", cells: [{ ...cell, value: text, styleRole: "normal" }] }];
     }
     case "list": {
       const rows: RowModel[] = [];

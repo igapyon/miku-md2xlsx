@@ -39,6 +39,21 @@ export interface RowModel {
 export interface CellModel {
   value: string;
   styleRole?: CellStyleRole;
+  hyperlink?: HyperlinkModel;
+  richTextRuns?: RichTextRun[];
+}
+
+export interface HyperlinkModel {
+  target: string;
+  kind: "external" | "internal";
+}
+
+export interface RichTextRun {
+  text: string;
+  bold?: boolean;
+  italic?: boolean;
+  strike?: boolean;
+  underline?: boolean;
 }
 
 export interface ImageRefModel {
