@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="77" height="24" viewBox="0 0 77 24">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#70AD47"/>
+    </marker>
+  </defs>
+  <line x1="2" y1="12" x2="73" y2="12" stroke="#70AD47" stroke-width="3" marker-end="url(#arrow)"/>
+</svg>

@@ -48,6 +48,8 @@
   - Repository-local real-document smoke coverage now converts `README.md` and
     `docs/handoff-from-xlsx2md.md`, including `##` sheet splitting for the
     handoff document.
+  - `miku-xlsx2md` fixture compatibility coverage now tracks every current
+    source `.xlsx` fixture in `docs/xlsx2md-fixture-coverage.md`.
   - Verification last run: `npm run fixtures:from-xlsx2md`, `npm run test`,
     `npm run build:all`, `npm run smoke:bundle`, and `git diff --check`.
   - Final verification and handoff summary are updated. Next practical restart
@@ -64,14 +66,8 @@
   - Maintain generated `.md` files under `tests/fixtures/from-xlsx2md/`.
   - Use `npm run fixtures:from-xlsx2md` to refresh the committed Markdown and
     image asset fixtures from `workplace/miku-xlsx2md`.
-  - Expand beyond the initial fixtures:
-    `tests/fixtures/xlsx2md-basic-sample01.xlsx`,
-    `table/table-basic-sample01.xlsx`,
-    `rich/rich-markdown-escape-sample01.xlsx`,
-    `narrative/narrative-vs-table-sample01.xlsx`,
-    `link/hyperlink-basic-sample01.xlsx`,
-    `merge/merge-multiline-sample01.xlsx`, and
-    `rich/rich-text-github-sample01.xlsx`.
+  - Current source fixture coverage is tracked in
+    `docs/xlsx2md-fixture-coverage.md`.
   - Treat these tests as Markdown input compatibility tests, not as
     pixel-perfect `xlsx -> md -> xlsx` round-trip tests.
   - Keep normal `npm test` independent from `workplace/`; add an optional
