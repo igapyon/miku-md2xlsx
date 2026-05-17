@@ -4,8 +4,15 @@ import { mkdir } from "node:fs/promises";
 import { markdownToXlsxModel, md2xlsx } from "../../dist/core.js";
 import packageJson from "../../package.json" with { type: "json" };
 
-const usage = `Usage:
+const usage = `miku-md2xlsx converts a Markdown file into an Excel .xlsx workbook.
+It is a local file converter: the input Markdown is read from disk and the
+generated workbook is written to the --out path.
+
+Usage:
   npm run cli -- <input.md> --out <output.xlsx> [options]
+
+Arguments:
+  <input.md>                Input Markdown file path
 
 Options:
   --out <file>              Output .xlsx path
@@ -16,6 +23,30 @@ Options:
   --no-header-row           Do not style first Markdown table row as a header
   --help                    Show this help
   --version                 Show version
+
+Examples:
+  npm run cli -- ./sample.md --out ./sample.xlsx
+  npm run cli -- ./sample.md --out ./sample.xlsx --sheet-mode heading
+  npm run cli -- ./book.md --out ./book.xlsx --sheet-mode heading --sheet-heading-depth 2
+
+Markdown handling notes:
+  - Headings, paragraphs, lists, tables, code blocks, horizontal rules, links,
+    common inline styles, and local PNG/JPEG/GIF image references are supported.
+  - Table cell values are written as strings. Numeric-looking and date-like
+    Markdown text is not inferred as Excel numbers or dates.
+  - Relative local image references are embedded best-effort when the asset file
+    exists next to the input Markdown. Missing, remote, and absolute image paths
+    remain visible as text references.
+  - miku-xlsx2md merge markers in table cells are treated as Excel merges:
+    [←M←] extends a merge to the left, and [↑M↑] extends a merge upward.
+  - A cell containing a single Markdown link is emitted as an Excel hyperlink
+    when the target can be represented by Excel.
+
+Sheet mode notes:
+  - single: create one worksheet from the whole Markdown document.
+  - heading: split worksheets at headings matching --sheet-heading-depth.
+  - Use --sheet-heading-depth 2 for miku-xlsx2md-style Markdown where # is the
+    workbook title and ## headings are worksheet names.
 `;
 
 function readOption(args, index, name) {

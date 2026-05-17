@@ -14,6 +14,17 @@ describe("miku-md2xlsx CLI", () => {
     expect(result.stdout.trim()).toMatch(/^\d+\.\d+\.\d+$/);
   });
 
+  it("prints agent-readable help", () => {
+    const result = spawnSync(process.execPath, ["scripts/miku-md2xlsx-cli.mjs", "--help"], { encoding: "utf8" });
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain("converts a Markdown file into an Excel .xlsx workbook");
+    expect(result.stdout).toContain("Examples:");
+    expect(result.stdout).toContain("Markdown handling notes:");
+    expect(result.stdout).toContain("Table cell values are written as strings.");
+    expect(result.stdout).toContain("Sheet mode notes:");
+  });
+
   it("writes an xlsx file", async () => {
     const dir = await mkdtemp(join(tmpdir(), "miku-md2xlsx-"));
     const out = join(dir, "out.xlsx");
