@@ -5,13 +5,14 @@ import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { unzipStoredBinaryEntries, unzipStoredEntries } from "./helpers/zip.js";
 import { readSheetNames } from "./helpers/xlsx.js";
+import packageJson from "../package.json" with { type: "json" };
 
 describe("miku-md2xlsx CLI", () => {
   it("prints version", () => {
     const result = spawnSync(process.execPath, ["scripts/miku-md2xlsx-cli.mjs", "--version"], { encoding: "utf8" });
 
     expect(result.status).toBe(0);
-    expect(result.stdout.trim()).toMatch(/^\d+\.\d+\.\d+$/);
+    expect(result.stdout.trim()).toBe(packageJson.version);
   });
 
   it("prints agent-readable help", () => {
@@ -23,6 +24,34 @@ describe("miku-md2xlsx CLI", () => {
     expect(result.stdout).toContain("Markdown handling notes:");
     expect(result.stdout).toContain("Table cell values are written as strings.");
     expect(result.stdout).toContain("Sheet mode notes:");
+  });
+
+  it("rejects unsupported sheet mode values", () => {
+    const result = spawnSync(process.execPath, [
+      "scripts/miku-md2xlsx-cli.mjs",
+      "tests/fixtures/smoke.md",
+      "--out",
+      "unused.xlsx",
+      "--sheet-mode",
+      "invalid"
+    ], { encoding: "utf8" });
+
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain("--sheet-mode must be single or heading.");
+  });
+
+  it("rejects unsupported table style values", () => {
+    const result = spawnSync(process.execPath, [
+      "scripts/miku-md2xlsx-cli.mjs",
+      "tests/fixtures/smoke.md",
+      "--out",
+      "unused.xlsx",
+      "--table-style",
+      "invalid"
+    ], { encoding: "utf8" });
+
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain("--table-style must be plain or bordered.");
   });
 
   it("writes an xlsx file", async () => {
