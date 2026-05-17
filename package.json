@@ -1,0 +1,25 @@
+{
+  "name": "miku-md2xlsx",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "npm run build --silent && vitest run",
+    "test:unit": "npm run build --silent && vitest run",
+    "test:watch": "vitest",
+    "cli": "npm run build --silent && node scripts/miku-md2xlsx-cli.mjs",
+    "smoke:version": "npm run build --silent && node scripts/miku-md2xlsx-cli.mjs --version",
+    "build": "node scripts/build-miku-md2xlsx.mjs"
+  },
+  "dependencies": {
+    "remark-gfm": "^4.0.1",
+    "remark-parse": "^11.0.0",
+    "unified": "^11.0.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "esbuild": "^0.27.7",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.0"
+  }
+}
