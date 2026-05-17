@@ -66,6 +66,29 @@ describe("miku-md2xlsx core", () => {
     expect(model.sheets[0].columnHints?.[0]).toBeGreaterThanOrEqual(32);
   });
 
+  it("places nested list items in deeper columns", () => {
+    const model = markdownToXlsxModel("- parent\n  - child\n    - grandchild\n");
+
+    expect(model.sheets[0].rows.map((row) => row.cells.map((cell) => cell.value))).toEqual([
+      ["- parent"],
+      ["", "- child"],
+      ["", "", "- grandchild"]
+    ]);
+  });
+
+  it("assigns heading styles by Markdown heading depth", () => {
+    const model = markdownToXlsxModel("# H1\n\n## H2\n\n### H3\n\n#### H4\n\n##### H5\n\n###### H6\n");
+
+    expect(model.sheets[0].rows.map((row) => row.cells[0].styleRole)).toEqual([
+      "heading1",
+      "heading2",
+      "heading3",
+      "heading4",
+      "heading5",
+      "heading6"
+    ]);
+  });
+
   it("splits sheets by top-level headings", () => {
     const model = markdownToXlsxModel("# Alpha\n\ntext\n\n## Beta\n\nmore\n", { sheetMode: "heading" });
 

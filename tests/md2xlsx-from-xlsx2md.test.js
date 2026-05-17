@@ -131,8 +131,8 @@ describe("miku-xlsx2md generated Markdown compatibility", () => {
     expect(rows).toContainEqual(["Internal", "Jump to Other"]);
     expect(model.sheets[0].rows[2].cells[0].hyperlink).toEqual({ target: "https://example.com/", kind: "external" });
     expect(model.sheets[0].rows[3].cells[0].hyperlink).toEqual({ target: "Other!A1", kind: "internal" });
-    expect(model.sheets[0].rows[6].cells[1].hyperlink).toEqual({ target: "https://example.com/docs", kind: "external" });
-    expect(model.sheets[0].rows[7].cells[1].hyperlink).toEqual({ target: "Other!A1", kind: "internal" });
+    expect(model.sheets[0].rows[7].cells[1].hyperlink).toEqual({ target: "https://example.com/docs", kind: "external" });
+    expect(model.sheets[0].rows[8].cells[1].hyperlink).toEqual({ target: "Other!A1", kind: "internal" });
   });
 
   it("writes xlsx hyperlinks for xlsx2md generated hyperlink Markdown", async () => {
@@ -149,8 +149,8 @@ describe("miku-xlsx2md generated Markdown compatibility", () => {
     expect(hyperlinks).toEqual([
       { ref: "A3", "r:id": "rId1" },
       { ref: "A4", location: "'Sheet Other'!A1" },
-      { ref: "B7", "r:id": "rId2" },
-      { ref: "B8", location: "'Sheet Other'!A1" }
+      { ref: "B8", "r:id": "rId2" },
+      { ref: "B9", location: "'Sheet Other'!A1" }
     ]);
     expect(relationships).toEqual([
       expect.objectContaining({
@@ -204,14 +204,14 @@ describe("miku-xlsx2md generated Markdown compatibility", () => {
       "D5:E5",
       "B6:D6",
       "B7:E7",
-      "B11:B12",
-      "C11:C13",
-      "D11:D14",
-      "B13:B14",
-      "B18:C19",
-      "D18:E19",
+      "B12:B13",
+      "C12:C14",
+      "D12:D15",
+      "B14:B15",
       "B20:C21",
-      "D20:E21"
+      "D20:E21",
+      "B22:C23",
+      "D22:E23"
     ]);
   });
 

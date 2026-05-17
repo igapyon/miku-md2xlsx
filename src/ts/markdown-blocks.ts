@@ -10,6 +10,23 @@ export function textRow(kind: RowModel["kind"], value: string, styleRole: RowMod
   return { kind, cells: [{ value, styleRole }] };
 }
 
+function headingStyleRole(depth: number): RowModel["cells"][number]["styleRole"] {
+  switch (depth) {
+    case 1:
+      return "heading1";
+    case 2:
+      return "heading2";
+    case 3:
+      return "heading3";
+    case 4:
+      return "heading4";
+    case 5:
+      return "heading5";
+    default:
+      return "heading6";
+  }
+}
+
 function imageRow(value: string, imageRefs: RowModel["imageRefs"]): RowModel {
   return { kind: "image", cells: [{ value, styleRole: "normal" }], imageRefs };
 }
@@ -28,15 +45,24 @@ function listItemText(item: any): string {
   return parts.filter(Boolean).join(" ");
 }
 
+function listRow(value: string, depth: number): RowModel {
+  return {
+    kind: "list",
+    cells: [
+      ...Array.from({ length: depth }, () => ({ value: "", styleRole: "normal" as const })),
+      { value, styleRole: "normal" }
+    ]
+  };
+}
+
 function appendListRows(rows: RowModel[], node: any, depth = 0): void {
   const ordered = Boolean(node.ordered);
   let index = Number(node.start ?? 1);
   for (const item of node.children ?? []) {
     const marker = ordered ? `${index}.` : "-";
-    const indent = "  ".repeat(depth);
     const text = listItemText(item);
     if (text) {
-      rows.push(textRow("list", `${indent}${marker} ${text}`));
+      rows.push(listRow(`${marker} ${text}`, depth));
     }
     for (const child of item.children ?? []) {
       if (child.type === "list") {
@@ -50,7 +76,7 @@ function appendListRows(rows: RowModel[], node: any, depth = 0): void {
 export function blockToRows(node: any, options: Required<Pick<Md2XlsxOptions, "headerRow" | "tableStyle">>): RowModel[] {
   switch (node.type) {
     case "heading":
-      return [textRow(node.depth === 1 ? "title" : "heading", extractText(node).trim(), node.depth === 1 ? "title" : "heading")];
+      return [textRow(node.depth === 1 ? "title" : "heading", extractText(node).trim(), headingStyleRole(node.depth))];
     case "paragraph": {
       const cell = extractCell(node);
       const text = cell.value.trim();

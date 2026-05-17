@@ -40,6 +40,7 @@ describe("repository Markdown document coverage", () => {
     const model = markdownToXlsxModel(markdown, { sheetMode: "heading", sheetHeadingDepth: 2 });
     const sheetValues = model.sheets.map((sheet) => flatten(sheet.rows.map((row) => row.cells.map((cell) => cell.value))));
     const values = sheetValues.join("\n");
+    const operationRows = model.sheets[0].rows.map((row) => row.cells.map((cell) => cell.value));
     const operationValues = sheetValues[0];
     const dataValues = sheetValues[1];
 
@@ -47,8 +48,8 @@ describe("repository Markdown document coverage", () => {
     expect(values).toContain("本文の導入です。<kbd>Ctrl</kbd> + <kbd>S</kbd> で保存します。");
     expect(values).toContain("> 重要: この仕様は暫定です。\n> 利用者レビュー後に確定します。");
     expect(values).toContain("<div class=\"note\">HTML block note</div>");
-    expect(operationValues).toContain("  - 添付ファイルを確認する");
-    expect(operationValues).toContain("    1. PDF を確認する");
+    expect(operationRows).toContainEqual(["", "- 添付ファイルを確認する"]);
+    expect(operationRows).toContainEqual(["", "", "1. PDF を確認する"]);
     expect(operationValues).toContain("export function approve(requestId: string): string");
     expect(dataValues).toContain("この段落は 1 つ目の表の前に残す。");
     expect(dataValues).toContain("requestId\nstring\n申請ID");
