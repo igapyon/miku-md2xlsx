@@ -28,6 +28,12 @@ describe("miku-md2xlsx core", () => {
     expect(model.sheets[0].rows[1].cells.map((cell) => cell.value)).toEqual(["x", "", "line1<br>line2"]);
   });
 
+  it("uses wider column hints for text-heavy block rows", () => {
+    const model = markdownToXlsxModel("# Title\n\nshort\n\n- item\n\n```text\ncode\n```\n");
+
+    expect(model.sheets[0].columnHints?.[0]).toBeGreaterThanOrEqual(32);
+  });
+
   it("splits sheets by top-level headings", () => {
     const model = markdownToXlsxModel("# Alpha\n\ntext\n\n## Beta\n\nmore\n", { sheetMode: "heading" });
 
