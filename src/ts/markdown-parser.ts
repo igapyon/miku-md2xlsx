@@ -10,6 +10,11 @@ export function extractText(node: any): string {
   if (!node) {
     return "";
   }
+  if (node.type === "image") {
+    const alt = typeof node.alt === "string" ? node.alt : "";
+    const url = typeof node.url === "string" ? node.url : "";
+    return url ? `![${alt}](${url})` : alt;
+  }
   if (typeof node.value === "string") {
     return node.value;
   }
@@ -17,4 +22,21 @@ export function extractText(node: any): string {
     return node.children.map((child: any) => extractText(child)).join("");
   }
   return "";
+}
+
+export function collectImageRefs(node: any): { alt: string; path: string }[] {
+  if (!node) {
+    return [];
+  }
+  const refs: { alt: string; path: string }[] = [];
+  if (node.type === "image" && typeof node.url === "string") {
+    refs.push({
+      alt: typeof node.alt === "string" ? node.alt : "",
+      path: node.url
+    });
+  }
+  for (const child of node.children ?? []) {
+    refs.push(...collectImageRefs(child));
+  }
+  return refs;
 }

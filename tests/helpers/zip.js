@@ -9,6 +9,11 @@ function readUint32(data, offset) {
 }
 
 export function unzipStoredEntries(data) {
+  const entries = unzipStoredBinaryEntries(data);
+  return new Map(Array.from(entries, ([name, bytes]) => [name, decoder.decode(bytes)]));
+}
+
+export function unzipStoredBinaryEntries(data) {
   const entries = new Map();
   let offset = 0;
   while (offset + 4 <= data.length && readUint32(data, offset) === 0x04034b50) {
@@ -22,7 +27,7 @@ export function unzipStoredEntries(data) {
     if (method !== 0) {
       throw new Error(`Unsupported zip compression method: ${method}`);
     }
-    entries.set(name, decoder.decode(data.slice(dataStart, dataStart + compressedSize)));
+    entries.set(name, data.slice(dataStart, dataStart + compressedSize));
     offset = dataStart + compressedSize;
   }
   return entries;

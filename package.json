@@ -9,6 +9,7 @@
     "test:watch": "vitest",
     "cli": "npm run build --silent && node scripts/miku-md2xlsx-cli.mjs",
     "smoke:version": "npm run build --silent && node scripts/miku-md2xlsx-cli.mjs --version",
+    "fixtures:from-xlsx2md": "node scripts/regenerate-xlsx2md-fixtures.mjs",
     "build": "node scripts/build-miku-md2xlsx.mjs"
   },
   "dependencies": {

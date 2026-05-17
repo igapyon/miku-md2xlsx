@@ -19,6 +19,7 @@ Initial supported Markdown features include:
 - Markdown tables
 - fenced and indented code blocks
 - horizontal rules
+- local PNG, JPEG, and GIF images referenced from Markdown
 
 Known limitations:
 
@@ -26,7 +27,7 @@ Known limitations:
   detailed styles are not reconstructed
 - formulas, charts, drawings, SmartArt, and conditional formatting are not
   generated
-- image support is reserved for future work
+- image anchor positions, sizes, and drawing geometry are not restored exactly
 
 ## CLI Use
 
@@ -58,8 +59,8 @@ npm run cli -- --version
 ## Current Status
 
 This repository is in first-cut development. The current vertical slice creates
-`.xlsx` files from Markdown tables and basic document blocks. See [TODO.md](./TODO.md)
-for follow-up work.
+`.xlsx` files from Markdown tables, basic document blocks, and local image
+references. See [TODO.md](./TODO.md) for follow-up work.
 
 Developer handoff notes are in [docs/handoff-from-xlsx2md.md](./docs/handoff-from-xlsx2md.md).
 Shared miku-soft reference information is in

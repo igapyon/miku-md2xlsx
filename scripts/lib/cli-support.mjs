@@ -1,5 +1,5 @@
 import { readFile, writeFile } from "node:fs/promises";
-import { dirname } from "node:path";
+import { dirname, isAbsolute, resolve } from "node:path";
 import { mkdir } from "node:fs/promises";
 import { md2xlsx } from "../../dist/core.js";
 import packageJson from "../../package.json" with { type: "json" };
@@ -23,6 +23,40 @@ function readOption(args, index, name) {
     throw new Error(`${name} requires a value.`);
   }
   return value;
+}
+
+function isLocalRelativeImagePath(value) {
+  return !isAbsolute(value) && !/^[a-z][a-z0-9+.-]*:/i.test(value) && !value.startsWith("//");
+}
+
+function contentTypeForPath(value) {
+  const lower = value.toLowerCase();
+  if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) {
+    return "image/jpeg";
+  }
+  if (lower.endsWith(".gif")) {
+    return "image/gif";
+  }
+  return "image/png";
+}
+
+async function collectImageAssets(markdown, inputPath) {
+  const inputDir = dirname(resolve(inputPath));
+  const paths = Array.from(markdown.matchAll(/!\[[^\]]*]\(([^)\s]+)\)/g), (match) => match[1]);
+  const uniquePaths = Array.from(new Set(paths)).filter(isLocalRelativeImagePath);
+  const assets = [];
+  for (const imagePath of uniquePaths) {
+    try {
+      assets.push({
+        path: imagePath,
+        data: await readFile(resolve(inputDir, imagePath)),
+        contentType: contentTypeForPath(imagePath)
+      });
+    } catch {
+      // Missing assets are kept as text references. Embedding is best-effort.
+    }
+  }
+  return assets;
 }
 
 export async function main(args) {
@@ -76,6 +110,7 @@ export async function main(args) {
   }
 
   const markdown = await readFile(input, "utf8");
+  options.imageAssets = await collectImageAssets(markdown, input);
   const workbook = md2xlsx(markdown, options);
   await mkdir(dirname(out), { recursive: true });
   await writeFile(out, workbook);
