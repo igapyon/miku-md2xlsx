@@ -142,6 +142,14 @@ README では、最初から次を明記する。
 - Markdown image reference は semantic traceability のため workbook text としても残す。
 - 画像 preview は小さめの固定 anchor と予約空行で、後続行との重なりを避ける。
 - CLI bundle scripts と GitHub Release asset workflow を追加済み。
+- GitHub Release CLI bundle workflow は初回実行成功済み。
+- `workbook-model` は thin entrypoint とし、Markdown block conversion,
+  table compatibility repair, sheet building, column hint calculation を
+  focused modules に分離済み。
+- `xlsx-writer` は package assembly に集中し、XML primitives, styles,
+  worksheet XML, drawing/image handling を focused modules に分離済み。
+- paragraph/list/code など text-heavy row の A 列幅 hint は広めにし、
+  sample workbook で過度な折り返しを抑える。
 
 ## 互換 fixture
 
@@ -183,7 +191,6 @@ git diff --check
 
 ## 次の一手
 
-1. accumulated diff を review し、意図しない差分がないことを確認して commit する。
-2. 必要なら first release 前に GitHub Release asset workflow を tag push で実地確認する。
-3. user-provided real Markdown documents で block coverage を増やす。
-4. 実画像サンプルが増えたら image sizing controls を検討する。
+1. user-provided real Markdown documents で block coverage を増やす。
+2. 実画像サンプルが増えたら image sizing controls を検討する。
+3. 次回 GitHub Release 公開時に release asset の中身を確認する。
