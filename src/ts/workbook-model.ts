@@ -1,4 +1,4 @@
-import { extractText, parseMarkdown } from "./markdown-parser.ts";
+import { collectImageRefs, extractText, parseMarkdown } from "./markdown-parser.ts";
 import type { Md2XlsxOptions, RowModel, SheetModel, WorkbookModel } from "./types.ts";
 
 function blankRow(): RowModel {
@@ -7,6 +7,10 @@ function blankRow(): RowModel {
 
 function textRow(kind: RowModel["kind"], value: string, styleRole: RowModel["cells"][number]["styleRole"] = "normal"): RowModel {
   return { kind, cells: [{ value, styleRole }] };
+}
+
+function imageRow(value: string, imageRefs: RowModel["imageRefs"]): RowModel {
+  return { kind: "image", cells: [{ value, styleRole: "normal" }], imageRefs };
 }
 
 function listItemText(item: any): string {
@@ -54,7 +58,11 @@ function blockToRows(node: any, options: Required<Pick<Md2XlsxOptions, "headerRo
       return [textRow(node.depth === 1 ? "title" : "heading", extractText(node).trim(), node.depth === 1 ? "title" : "heading")];
     case "paragraph": {
       const text = extractText(node).trim();
-      return text ? [textRow("paragraph", text)] : [];
+      if (!text) {
+        return [];
+      }
+      const imageRefs = collectImageRefs(node);
+      return imageRefs.length ? [imageRow(text, imageRefs)] : [textRow("paragraph", text)];
     }
     case "list": {
       const rows: RowModel[] = [];
@@ -117,7 +125,7 @@ export function markdownToWorkbook(markdown: string, options: Md2XlsxOptions = {
   if (options.sheetMode !== "heading") {
     const name = options.title ?? "Sheet1";
     const rows = (tree.children ?? []).flatMap((child: any) => blockToRows(child, { headerRow, tableStyle }));
-    return { sheets: [finalizeSheet({ name: sanitizeSheetName(name), rows })] };
+    return { sheets: [finalizeSheet({ name: sanitizeSheetName(name), rows })], imageAssets: options.imageAssets };
   }
 
   const usedNames = new Set<string>();
@@ -138,5 +146,5 @@ export function markdownToWorkbook(markdown: string, options: Md2XlsxOptions = {
   if (current.rows.length || sheets.length === 0) {
     sheets.push(finalizeSheet(current));
   }
-  return { sheets };
+  return { sheets, imageAssets: options.imageAssets };
 }
