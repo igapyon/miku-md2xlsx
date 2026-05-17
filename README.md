@@ -49,6 +49,9 @@ Common inline Markdown styles are written as Excel rich text runs. `**bold**`,
 `*italic*`, `~~strike~~`, `<ins>underline</ins>`, and `<br>` are converted to
 cell formatting and cell-internal line breaks.
 
+Markdown heading levels use different font sizes in the generated workbook, so
+`#` through `######` are visually distinguishable.
+
 Known limitations:
 
 - original Excel cell addresses, column widths, row heights, and detailed

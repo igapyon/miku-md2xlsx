@@ -14,7 +14,10 @@ interface SheetBuildOptions {
 export function buildSheets(tree: any, options: SheetBuildOptions): SheetModel[] {
   if (options.sheetMode !== "heading") {
     const name = options.title ?? "Sheet1";
-    const rows = (tree.children ?? []).flatMap((child: any) => blockToRows(child, options));
+    const rows: RowModel[] = [];
+    for (const child of tree.children ?? []) {
+      appendBlockRows(rows, child, options);
+    }
     return [finalizeSheet({ name: sanitizeSheetName(name), rows })];
   }
 
@@ -36,9 +39,9 @@ export function buildSheets(tree: any, options: SheetBuildOptions): SheetModel[]
       continue;
     }
     if (hasSplit) {
-      current.rows.push(...rows);
+      appendRows(current.rows, child, rows);
     } else {
-      prefaceRows.push(...rows);
+      appendRows(prefaceRows, child, rows);
     }
   }
   if (hasSplit && (current.rows.length || sheets.length === 0)) {
@@ -47,6 +50,25 @@ export function buildSheets(tree: any, options: SheetBuildOptions): SheetModel[]
     sheets.push(finalizeSheet({ ...current, rows: prefaceRows }));
   }
   return sheets;
+}
+
+function appendBlockRows(rows: RowModel[], child: any, options: SheetBuildOptions): void {
+  appendRows(rows, child, blockToRows(child, options));
+}
+
+function appendRows(target: RowModel[], child: any, rows: RowModel[]): void {
+  if (child.type === "heading" && shouldInsertBlankBeforeHeading(target)) {
+    target.push(blankRow());
+  }
+  target.push(...rows);
+}
+
+function shouldInsertBlankBeforeHeading(rows: RowModel[]): boolean {
+  if (!rows.length) {
+    return false;
+  }
+  const previous = rows[rows.length - 1];
+  return previous.kind !== "blank" && previous.kind !== "heading" && previous.kind !== "title";
 }
 
 function sanitizeSheetName(name: string): string {

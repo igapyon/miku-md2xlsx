@@ -71,6 +71,8 @@
   - Common inline rich text is now emitted as Excel rich text runs:
     `**bold**`, `*italic*`, `~~strike~~`, `<ins>underline</ins>`, and `<br>`
     cell-internal line breaks.
+  - Markdown heading depths `#` through `######` now map to distinct worksheet
+    font sizes.
   - Verification last run: `npm run fixtures:from-xlsx2md`, `npm run test`,
     `npm run build:all`, `npm run smoke:bundle`, and `git diff --check`.
   - Final verification and handoff summary are updated. Next practical restart
@@ -102,6 +104,9 @@
   - Convert `**bold**`, `*italic*`, `~~strike~~`, `<ins>underline</ins>`, and
     `<br>` into Excel inline string runs and cell-internal line breaks.
   - Keep unsupported raw HTML as visible text.
+- Keep Markdown heading levels visually distinct in worksheets.
+  - Map `#` through `######` to progressively smaller bold font sizes.
+  - Keep sheet splitting behavior separate from visual heading style.
 - Maintain `miku-xlsx2md` fixture compatibility coverage.
   - Current source fixture coverage is complete for the checked-in
     `workplace/miku-xlsx2md/tests/fixtures/*.xlsx` set and tracked in

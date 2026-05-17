@@ -1,7 +1,20 @@
 export type SheetMode = "single" | "heading";
 export type SheetHeadingDepth = 1 | 2;
 export type TableStyleMode = "plain" | "bordered";
-export type CellStyleRole = "normal" | "title" | "heading" | "tableHeader" | "tableCell" | "code" | "separator";
+export type CellStyleRole =
+  | "normal"
+  | "heading1"
+  | "heading2"
+  | "heading3"
+  | "heading4"
+  | "heading5"
+  | "heading6"
+  | "title"
+  | "heading"
+  | "tableHeader"
+  | "tableCell"
+  | "code"
+  | "separator";
 export type RowKind = "title" | "heading" | "paragraph" | "list" | "table" | "code" | "separator" | "image" | "blank";
 
 export interface Md2XlsxImageAsset {
