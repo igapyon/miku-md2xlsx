@@ -17,6 +17,9 @@ interface SheetDrawing {
   images: EmbeddedImage[];
 }
 
+const IMAGE_PREVIEW_COLUMNS = 3;
+const IMAGE_PREVIEW_ROWS = 6;
+
 function xml(value: string): string {
   return sanitizeXmlText(value)
     .replace(/&/g, "&amp;")
@@ -221,7 +224,7 @@ function drawingXml(drawing: SheetDrawing): string {
     const col = 1;
     return `<xdr:twoCellAnchor editAs="oneCell">
 <xdr:from><xdr:col>${col}</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>${row}</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:from>
-<xdr:to><xdr:col>${col + 3}</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>${row + 8}</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:to>
+<xdr:to><xdr:col>${col + IMAGE_PREVIEW_COLUMNS}</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>${row + IMAGE_PREVIEW_ROWS}</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:to>
 <xdr:pic>
 <xdr:nvPicPr><xdr:cNvPr id="${imageIndex + 1}" name="${xml(image.alt || image.path)}"/><xdr:cNvPicPr><a:picLocks noChangeAspect="1"/></xdr:cNvPicPr></xdr:nvPicPr>
 <xdr:blipFill><a:blip r:embed="${image.relationshipId}"/><a:stretch><a:fillRect/></a:stretch></xdr:blipFill>
@@ -252,6 +255,32 @@ function imageAssetsByPath(workbook: WorkbookModel): Map<string, Md2XlsxImageAss
     assets.set(asset.path, asset);
   }
   return assets;
+}
+
+function blankPreviewRow(): RowModel {
+  return { kind: "blank", cells: [{ value: "" }] };
+}
+
+function rowHasEmbeddableImage(row: RowModel, assets: Map<string, Md2XlsxImageAsset>): boolean {
+  return (row.imageRefs ?? []).some((ref) => assets.has(ref.path));
+}
+
+function withReservedImagePreviewRows(workbook: WorkbookModel): WorkbookModel {
+  const assets = imageAssetsByPath(workbook);
+  if (!assets.size) {
+    return workbook;
+  }
+  return {
+    ...workbook,
+    sheets: workbook.sheets.map((sheet) => ({
+      ...sheet,
+      rows: sheet.rows.flatMap((row) => (
+        rowHasEmbeddableImage(row, assets)
+          ? [row, ...Array.from({ length: IMAGE_PREVIEW_ROWS }, blankPreviewRow)]
+          : [row]
+      ))
+    }))
+  };
 }
 
 function collectSheetDrawings(workbook: WorkbookModel): SheetDrawing[] {
@@ -311,17 +340,18 @@ function appProps(sheetCount: number): string {
 }
 
 export function writeXlsx(workbook: WorkbookModel): Uint8Array {
-  const drawings = collectSheetDrawings(workbook);
+  const renderWorkbook = withReservedImagePreviewRows(workbook);
+  const drawings = collectSheetDrawings(renderWorkbook);
   const drawingsBySheet = new Map(drawings.map((drawing) => [drawing.sheetIndex, drawing]));
   const entries: ZipFileEntry[] = [
-    { path: "[Content_Types].xml", data: contentTypes(workbook.sheets.length, drawings) },
+    { path: "[Content_Types].xml", data: contentTypes(renderWorkbook.sheets.length, drawings) },
     { path: "_rels/.rels", data: rootRels() },
-    { path: "xl/workbook.xml", data: workbookXml(workbook.sheets) },
-    { path: "xl/_rels/workbook.xml.rels", data: workbookRels(workbook.sheets.length) },
+    { path: "xl/workbook.xml", data: workbookXml(renderWorkbook.sheets) },
+    { path: "xl/_rels/workbook.xml.rels", data: workbookRels(renderWorkbook.sheets.length) },
     { path: "xl/styles.xml", data: stylesXml() },
     { path: "docProps/core.xml", data: coreProps() },
-    { path: "docProps/app.xml", data: appProps(workbook.sheets.length) },
-    ...workbook.sheets.map((sheet, index) => ({
+    { path: "docProps/app.xml", data: appProps(renderWorkbook.sheets.length) },
+    ...renderWorkbook.sheets.map((sheet, index) => ({
       path: `xl/worksheets/sheet${index + 1}.xml`,
       data: worksheetXml(sheet, drawingsBySheet.get(index + 1))
     })),

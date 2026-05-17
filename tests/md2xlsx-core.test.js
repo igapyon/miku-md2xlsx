@@ -13,11 +13,39 @@ describe("miku-md2xlsx core", () => {
     expect(model.sheets[0].rows[0].cells[0].styleRole).toBe("tableHeader");
   });
 
-  it("splits sheets by headings", () => {
+  it("keeps escaped pipe sequences inside table cells", () => {
+    const model = markdownToXlsxModel(String.raw`| A | B |
+| --- | --- |
+| a \\| b | c \\| d |
+`);
+
+    expect(model.sheets[0].rows[1].cells.map((cell) => cell.value)).toEqual(["a \\| b", "c \\| d"]);
+  });
+
+  it("keeps empty and multiline-like table cell content", () => {
+    const model = markdownToXlsxModel("| A | Empty | Multi |\n| --- | --- | --- |\n| x | | line1<br>line2 |\n");
+
+    expect(model.sheets[0].rows[1].cells.map((cell) => cell.value)).toEqual(["x", "", "line1<br>line2"]);
+  });
+
+  it("splits sheets by top-level headings", () => {
     const model = markdownToXlsxModel("# Alpha\n\ntext\n\n## Beta\n\nmore\n", { sheetMode: "heading" });
 
-    expect(model.sheets.map((sheet) => sheet.name)).toEqual(["Alpha", "Beta"]);
+    expect(model.sheets.map((sheet) => sheet.name)).toEqual(["Alpha"]);
     expect(model.sheets[0].rows.some((row) => row.cells[0]?.value === "text")).toBe(true);
+    expect(model.sheets[0].rows.some((row) => row.cells[0]?.value === "Beta")).toBe(true);
+    expect(model.sheets[0].rows.some((row) => row.cells[0]?.value === "more")).toBe(true);
+  });
+
+  it("can split sheets by second-level headings while preserving preface rows", () => {
+    const model = markdownToXlsxModel("# Book\n\nintro\n\n## Alpha\n\ntext\n\n## Beta\n\nmore\n", {
+      sheetMode: "heading",
+      sheetHeadingDepth: 2
+    });
+
+    expect(model.sheets.map((sheet) => sheet.name)).toEqual(["Alpha", "Beta"]);
+    expect(model.sheets[0].rows.some((row) => row.cells[0]?.value === "Book")).toBe(true);
+    expect(model.sheets[0].rows.some((row) => row.cells[0]?.value === "intro")).toBe(true);
     expect(model.sheets[1].rows.some((row) => row.cells[0]?.value === "more")).toBe(true);
   });
 

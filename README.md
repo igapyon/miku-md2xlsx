@@ -21,6 +21,12 @@ Initial supported Markdown features include:
 - horizontal rules
 - local PNG, JPEG, and GIF images referenced from Markdown
 
+Local images are embedded on a best-effort basis when Markdown image URLs point
+to relative files next to the input Markdown file, such as
+`![chart](assets/chart.png)`. The Markdown image reference is also kept as
+workbook text so the original semantic reference remains visible. Remote URLs,
+absolute paths, and missing local files are left as text references.
+
 Known limitations:
 
 - original Excel cell addresses, column widths, row heights, merged cells, and
@@ -49,11 +55,25 @@ Split sheets by top-level headings:
 npm run cli -- ./sample.md --out ./sample.xlsx --sheet-mode heading
 ```
 
+Split sheets by second-level headings, which is useful for Markdown generated
+by `miku-xlsx2md` where `#` is the book title and `##` is the sheet heading:
+
+```bash
+npm run cli -- ./sample.md --out ./sample.xlsx --sheet-mode heading --sheet-heading-depth 2
+```
+
 Show help or version:
 
 ```bash
 npm run cli -- --help
 npm run cli -- --version
+```
+
+Build and smoke-test the single-file CLI bundle:
+
+```bash
+npm run build:bundle
+npm run smoke:bundle
 ```
 
 ## Current Status

@@ -127,10 +127,63 @@ README では、最初から次を明記する。
 - 目的は「Markdown の情報構造を Excel で扱いやすくすること」である。
 - 初期版の対象は見出し、本文、リスト、Markdown table である。
 
+## 現在の実装状況
+
+2026-05-17 時点で、初期 vertical slice は実装済み。
+
+- README / package metadata / TypeScript source / CLI / fixture test layout を作成済み。
+- Markdown parser は `remark-parse` + `remark-gfm` を使用。
+- `.xlsx` writer は最小 OOXML package writer として実装済み。
+- `Markdown AST -> WorkbookModel -> .xlsx` の段階構成を採用済み。
+- `single table -> xlsx` と `heading split -> multiple sheets` を実装済み。
+- `--sheet-mode heading` は既定で `#` を sheet split に使う。
+- `--sheet-heading-depth 2` により、`miku-xlsx2md` 生成 Markdown の `# Book` / `## Sheet` 形式にも対応。
+- local relative image assets は CLI で best-effort に収集し、`.xlsx` の `xl/media/` に埋め込む。
+- Markdown image reference は semantic traceability のため workbook text としても残す。
+- 画像 preview は小さめの固定 anchor と予約空行で、後続行との重なりを避ける。
+- CLI bundle scripts と GitHub Release asset workflow を追加済み。
+
+## 互換 fixture
+
+`miku-xlsx2md` 由来 Markdown 互換 fixture は `tests/fixtures/from-xlsx2md/` に置く。
+
+現在の主な coverage:
+
+- basic workbook Markdown
+- adjacent table Markdown
+- Markdown escape-heavy table cells
+- narrative paragraphs and tables
+- hyperlinks
+- merge multiline markers
+- rich text Markdown output
+- local image assets
+- image and chart coexistence Markdown
+
+fixture 更新は次で行う。
+
+```bash
+npm run fixtures:from-xlsx2md
+```
+
+通常テストは `workplace/` に依存しない。fixture 再生成だけが `workplace/miku-xlsx2md` に依存する。
+
+## 検証コマンド
+
+主要な確認コマンド:
+
+```bash
+npm run fixtures:from-xlsx2md
+npm run test
+npm run build:all
+npm run smoke:bundle
+git diff --check
+```
+
+`bundle/` と `dist/` は生成物であり `.gitignore` 対象。
+
 ## 次の一手
 
-1. `README.md` を作成し、上記の位置づけを短く明記する。
-2. `package.json`、`src/ts/`、`scripts/`、`tests/fixtures/` を作成する。
-3. Markdown parser と `.xlsx` writer の候補ライブラリを決める。
-4. `single table -> xlsx` の最小 vertical slice を実装する。
-5. `heading split -> multiple sheets` の fixture を追加する。
+1. accumulated diff を review し、意図しない差分がないことを確認して commit する。
+2. 必要なら first release 前に GitHub Release asset workflow を tag push で実地確認する。
+3. user-provided real Markdown documents で block coverage を増やす。
+4. 実画像サンプルが増えたら image sizing controls を検討する。

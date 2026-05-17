@@ -1,0 +1,84 @@
+name: Release CLI bundle
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+env:
+  PRODUCT_NAME: miku-md2xlsx
+  RELEASE_ASSETS_DIR: release-assets
+
+jobs:
+  release-cli-bundle:
+    runs-on: ubuntu-latest
+    env:
+      TAG_NAME: ${{ github.ref_name }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Verify release tag
+        run: |
+          case "$TAG_NAME" in
+            v*) ;;
+            *)
+              echo "Release asset upload only supports tags starting with v: $TAG_NAME" >&2
+              exit 1
+              ;;
+          esac
+
+          package_version="$(node -p "JSON.parse(require('fs').readFileSync('package.json', 'utf8')).version")"
+          tag_version="${TAG_NAME#v}"
+
+          case "$tag_version" in
+            "$package_version"|"$package_version".*) ;;
+            *)
+              echo "Tag version ($tag_version) must match package.json version ($package_version) or start with ${package_version}." >&2
+              exit 1
+              ;;
+          esac
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build generated artifacts and bundle
+        run: npm run build:all
+
+      - name: Test
+        run: npm run test:unit
+
+      - name: CLI version smoke
+        run: npm run smoke:version
+
+      - name: CLI bundle smoke
+        run: npm run smoke:bundle
+
+      - name: Prepare release assets
+        run: |
+          version="${TAG_NAME#v}"
+          mkdir -p "${RELEASE_ASSETS_DIR}"
+          cp "bundle/${PRODUCT_NAME}.mjs" "${RELEASE_ASSETS_DIR}/${PRODUCT_NAME}-${version}.mjs"
+          cp "bundle/${PRODUCT_NAME}-sources.tgz" "${RELEASE_ASSETS_DIR}/${PRODUCT_NAME}-sources-${version}.tgz"
+
+      - name: Verify release assets
+        run: |
+          version="${TAG_NAME#v}"
+          test -s "${RELEASE_ASSETS_DIR}/${PRODUCT_NAME}-${version}.mjs"
+          test -s "${RELEASE_ASSETS_DIR}/${PRODUCT_NAME}-sources-${version}.tgz"
+          test "$(find "${RELEASE_ASSETS_DIR}" -type f | wc -l | tr -d ' ')" = "2"
+
+      - name: Upload release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$TAG_NAME" "${RELEASE_ASSETS_DIR}"/* --clobber
