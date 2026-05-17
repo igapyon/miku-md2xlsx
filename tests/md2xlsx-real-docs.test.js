@@ -15,8 +15,9 @@ describe("repository Markdown document coverage", () => {
     const values = flatten(readWorksheetValues(entries));
 
     expect(readSheetNames(entries)).toEqual(["miku-md2xlsx"]);
+    expect(values).toContain("Quick Start");
     expect(values).toContain("What It Converts");
-    expect(values).toContain("CLI Use");
+    expect(values).toContain("CLI Options");
     expect(values).toContain("npm run cli -- ./sample.md --out ./sample.xlsx");
   });
 

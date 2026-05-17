@@ -79,6 +79,20 @@ function readSheetHeadingDepth(value) {
   return Number(value);
 }
 
+function readSheetMode(value) {
+  if (value !== "single" && value !== "heading") {
+    throw new Error("--sheet-mode must be single or heading.");
+  }
+  return value;
+}
+
+function readTableStyle(value) {
+  if (value !== "plain" && value !== "bordered") {
+    throw new Error("--table-style must be plain or bordered.");
+  }
+  return value;
+}
+
 async function collectImageAssets(markdown, inputPath) {
   const inputDir = dirname(resolve(inputPath));
   const model = markdownToXlsxModel(markdown);
@@ -124,7 +138,7 @@ export async function main(args) {
       out = readOption(args, i, arg);
       i += 1;
     } else if (arg === "--sheet-mode") {
-      options.sheetMode = readOption(args, i, arg);
+      options.sheetMode = readSheetMode(readOption(args, i, arg));
       i += 1;
     } else if (arg === "--sheet-heading-depth") {
       options.sheetHeadingDepth = readSheetHeadingDepth(readOption(args, i, arg));
@@ -133,7 +147,7 @@ export async function main(args) {
       options.title = readOption(args, i, arg);
       i += 1;
     } else if (arg === "--table-style") {
-      options.tableStyle = readOption(args, i, arg);
+      options.tableStyle = readTableStyle(readOption(args, i, arg));
       i += 1;
     } else if (arg === "--no-header-row") {
       options.headerRow = false;
