@@ -9,6 +9,8 @@ const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
 const xlsx2mdDir = path.join(rootDir, "workplace", "miku-xlsx2md");
 const tempDir = await mkdtemp(path.join(tmpdir(), "miku-md2xlsx-semantic-roundtrip-"));
 
+process.stdout.write(`[semantic-roundtrip] output directory: ${tempDir}\n`);
+
 const cases = [
   {
     name: "basic",
@@ -31,14 +33,40 @@ const cases = [
     tokens: ["基本数式サンプル", "arith", "15", "OK", "2024/3/17"]
   },
   {
+    name: "formula-crosssheet",
+    fixture: "formula-crosssheet-sample01.md",
+    tokens: ["複数シート参照サンプル", "CrossValue", "日本語参照値", "sum_range", "10"]
+  },
+  {
     name: "hyperlink",
     fixture: "hyperlink-basic-sample01.md",
     tokens: ["[Open example](https://example.com/)", "[Jump to Other](#other) (Other!A1)"]
   },
   {
+    name: "named-range",
+    fixture: "named-range-sample01.md",
+    tokens: ["definedNames サンプル", "BaseName元", "BaseRange1", "30", "CrossRef CrossRef"]
+  },
+  {
+    name: "rich-usecase",
+    fixture: "rich-usecase-sample01.md",
+    tokens: [
+      "[Apple](https://www.apple.com/)",
+      "[Google](https://www.google.com/)",
+      "Apple の製品が<ins>購入できます</ins>。",
+      "実店舗とともに<br>ネットショップでもお世話になっています。",
+      "トルツメ: この部分は文面から外すことを提案。"
+    ]
+  },
+  {
     name: "merge",
     fixture: "merge-pattern-sample01.md",
     tokens: ["[←M←]", "[↑M↑]", "※横結合のサンプルです", "※2x2結合のサンプルです"]
+  },
+  {
+    name: "shape-flowchart",
+    fixture: "shape-flowchart-sample01.md",
+    tokens: ["フローチャート図形サンプル", "Table: 001", "値A", "2026年", "32,012"]
   },
   {
     name: "chart",
@@ -49,6 +77,18 @@ const cases = [
     name: "image",
     fixture: "image-basic-sample01.md",
     tokens: ["Image: 001", "File: assets/image/image_001.png", "![image_001.png](assets/image/image_001.png)"]
+  },
+  {
+    name: "image-chart",
+    fixture: "image-basic-sample02/image-basic-sample02.md",
+    tokens: [
+      "Chart: 001",
+      "Title: このグラフのタイトル",
+      "Type: Line Chart",
+      "Image: 001",
+      "File: assets/image/image_001.png",
+      "![image_001.png](assets/image/image_001.png)"
+    ]
   }
 ];
 
@@ -68,7 +108,11 @@ function run(command, args, options = {}) {
 
 function normalizeMarkdown(value) {
   return value
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&amp;/g, "&")
     .replace(/\\([\\`*{}[\]()#+\-.!_|~$])/g, "$1")
+    .replace(/\*\*\*|\*\*|\*|~~/g, "")
     .replace(/\r\n/g, "\n");
 }
 
@@ -118,6 +162,9 @@ for (const testCase of cases) {
   const returnedMarkdown = await readFile(returnedMarkdownPath, "utf8");
   assertContainsAll(returnedMarkdown, testCase.tokens, `${testCase.fixture} returned Markdown`);
   process.stdout.write(`[semantic-roundtrip] ${testCase.fixture}\n`);
+  process.stdout.write(`  xlsx: ${xlsxPath}\n`);
+  process.stdout.write(`  returned md: ${returnedMarkdownPath}\n`);
+  process.stdout.write(`  returned zip: ${returnedZipPath}\n`);
 }
 
 process.stdout.write(`[semantic-roundtrip] ${cases.length} fixture(s) passed\n`);
