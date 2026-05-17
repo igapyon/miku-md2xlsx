@@ -21,14 +21,37 @@ const markdownFixtures = [
   {
     input: "tests/fixtures/rich/rich-markdown-escape-sample01.xlsx",
     output: "rich-markdown-escape-sample01.md"
+  },
+  {
+    input: "tests/fixtures/narrative/narrative-vs-table-sample01.xlsx",
+    output: "narrative-vs-table-sample01.md"
+  },
+  {
+    input: "tests/fixtures/link/hyperlink-basic-sample01.xlsx",
+    output: "hyperlink-basic-sample01.md"
+  },
+  {
+    input: "tests/fixtures/merge/merge-multiline-sample01.xlsx",
+    output: "merge-multiline-sample01.md"
+  },
+  {
+    input: "tests/fixtures/rich/rich-text-github-sample01.xlsx",
+    output: "rich-text-github-sample01.md"
   }
 ];
 
-const imageFixture = {
-  input: "tests/fixtures/image/image-basic-sample01.xlsx",
-  output: "image-basic-sample01.md",
-  zip: "image-basic-sample01-xlsx2md.zip"
-};
+const imageFixtures = [
+  {
+    input: "tests/fixtures/image/image-basic-sample01.xlsx",
+    output: "image-basic-sample01.md",
+    zip: "image-basic-sample01-xlsx2md.zip"
+  },
+  {
+    input: "tests/fixtures/image/image-basic-sample02.xlsx",
+    output: "image-basic-sample02/image-basic-sample02.md",
+    zip: "image-basic-sample02-xlsx2md.zip"
+  }
+];
 
 function run(command, args, cwd) {
   const result = spawnSync(command, args, {
@@ -69,14 +92,14 @@ function unzipStoredEntries(data) {
   return entries;
 }
 
-async function writeAssetEntries(zipPath) {
+async function writeAssetEntries(zipPath, fixtureDir) {
   const entries = unzipStoredEntries(await readFile(zipPath));
   for (const [name, data] of entries) {
     if (!name.startsWith("output/assets/")) {
       continue;
     }
     const relativeName = name.replace(/^output\//, "");
-    const target = path.join(outputDir, relativeName);
+    const target = path.join(fixtureDir, relativeName);
     await mkdir(path.dirname(target), { recursive: true });
     await writeFile(target, data);
   }
@@ -92,21 +115,28 @@ await mkdir(tempDir, { recursive: true });
 run("npm", ["run", "build:core"], xlsx2mdDir);
 
 for (const fixture of markdownFixtures) {
+  const target = path.join(outputDir, fixture.output);
+  await mkdir(path.dirname(target), { recursive: true });
   run(process.execPath, [
     "scripts/miku-xlsx2md-cli.mjs",
     fixture.input,
     "--out",
-    path.join(outputDir, fixture.output)
+    target
   ], xlsx2mdDir);
 }
 
-const imageZipPath = path.join(tempDir, imageFixture.zip);
-run(process.execPath, [
-  "scripts/miku-xlsx2md-cli.mjs",
-  imageFixture.input,
-  "--out",
-  path.join(outputDir, imageFixture.output),
-  "--zip",
-  imageZipPath
-], xlsx2mdDir);
-await writeAssetEntries(imageZipPath);
+for (const fixture of imageFixtures) {
+  const target = path.join(outputDir, fixture.output);
+  const fixtureDir = path.dirname(target);
+  const imageZipPath = path.join(tempDir, fixture.zip);
+  await mkdir(fixtureDir, { recursive: true });
+  run(process.execPath, [
+    "scripts/miku-xlsx2md-cli.mjs",
+    fixture.input,
+    "--out",
+    target,
+    "--zip",
+    imageZipPath
+  ], xlsx2mdDir);
+  await writeAssetEntries(imageZipPath, fixtureDir);
+}

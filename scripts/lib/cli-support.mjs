@@ -1,7 +1,7 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute, resolve } from "node:path";
 import { mkdir } from "node:fs/promises";
-import { md2xlsx } from "../../dist/core.js";
+import { markdownToXlsxModel, md2xlsx } from "../../dist/core.js";
 import packageJson from "../../package.json" with { type: "json" };
 
 const usage = `Usage:
@@ -10,6 +10,7 @@ const usage = `Usage:
 Options:
   --out <file>              Output .xlsx path
   --sheet-mode <mode>       single or heading (default: single)
+  --sheet-heading-depth <n> Heading depth for sheet splits: 1 or 2 (default: 1)
   --title <value>           Workbook title or first sheet name
   --table-style <mode>      plain or bordered (default: bordered)
   --no-header-row           Do not style first Markdown table row as a header
@@ -40,9 +41,17 @@ function contentTypeForPath(value) {
   return "image/png";
 }
 
+function readSheetHeadingDepth(value) {
+  if (value !== "1" && value !== "2") {
+    throw new Error("--sheet-heading-depth must be 1 or 2.");
+  }
+  return Number(value);
+}
+
 async function collectImageAssets(markdown, inputPath) {
   const inputDir = dirname(resolve(inputPath));
-  const paths = Array.from(markdown.matchAll(/!\[[^\]]*]\(([^)\s]+)\)/g), (match) => match[1]);
+  const model = markdownToXlsxModel(markdown);
+  const paths = model.sheets.flatMap((sheet) => sheet.rows.flatMap((row) => (row.imageRefs ?? []).map((ref) => ref.path)));
   const uniquePaths = Array.from(new Set(paths)).filter(isLocalRelativeImagePath);
   const assets = [];
   for (const imagePath of uniquePaths) {
@@ -73,6 +82,7 @@ export async function main(args) {
   let out = "";
   const options = {
     sheetMode: "single",
+    sheetHeadingDepth: 1,
     tableStyle: "bordered",
     headerRow: true
   };
@@ -84,6 +94,9 @@ export async function main(args) {
       i += 1;
     } else if (arg === "--sheet-mode") {
       options.sheetMode = readOption(args, i, arg);
+      i += 1;
+    } else if (arg === "--sheet-heading-depth") {
+      options.sheetHeadingDepth = readSheetHeadingDepth(readOption(args, i, arg));
       i += 1;
     } else if (arg === "--title") {
       options.title = readOption(args, i, arg);

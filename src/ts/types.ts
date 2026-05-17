@@ -1,4 +1,5 @@
 export type SheetMode = "single" | "heading";
+export type SheetHeadingDepth = 1 | 2;
 export type TableStyleMode = "plain" | "bordered";
 export type CellStyleRole = "normal" | "title" | "heading" | "tableHeader" | "tableCell" | "code" | "separator";
 export type RowKind = "title" | "heading" | "paragraph" | "list" | "table" | "code" | "separator" | "image" | "blank";
@@ -11,6 +12,7 @@ export interface Md2XlsxImageAsset {
 
 export interface Md2XlsxOptions {
   sheetMode?: SheetMode;
+  sheetHeadingDepth?: SheetHeadingDepth;
   title?: string;
   tableStyle?: TableStyleMode;
   headerRow?: boolean;

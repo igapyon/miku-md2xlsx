@@ -42,12 +42,79 @@ function appendListRows(rows: RowModel[], node: any, depth = 0): void {
   }
 }
 
+function styleRoleForTableCell(rowIndex: number, headerRow: boolean, tableStyle: Md2XlsxOptions["tableStyle"]): RowModel["cells"][number]["styleRole"] {
+  return headerRow && rowIndex === 0 ? "tableHeader" : tableStyle === "plain" ? "normal" : "tableCell";
+}
+
+function repairEscapedPipeCells(values: string[], expectedColumns: number): string[] {
+  if (expectedColumns < 1 || values.length <= expectedColumns) {
+    return values;
+  }
+  const repaired: string[] = [];
+  for (let index = 0; index < values.length; index += 1) {
+    let value = values[index];
+    while (value.endsWith("\\") && repaired.length + (values.length - index) > expectedColumns && index + 1 < values.length) {
+      index += 1;
+      value = `${value}| ${values[index].replace(/^\s+/, "")}`;
+    }
+    repaired.push(value);
+  }
+  return repaired;
+}
+
 function tableRows(node: any, headerRow: boolean, tableStyle: Md2XlsxOptions["tableStyle"]): RowModel[] {
-  return (node.children ?? []).map((row: any, rowIndex: number) => ({
+  const rawRows = (node.children ?? []).map((row: any) => (row.children ?? []).map((cell: any) => extractText(cell).trim()));
+  const expectedColumns = rawRows[0]?.length ?? 0;
+  return rawRows.map((row, rowIndex) => ({
     kind: "table",
-    cells: (row.children ?? []).map((cell: any) => ({
-      value: extractText(cell).trim(),
-      styleRole: headerRow && rowIndex === 0 ? "tableHeader" : tableStyle === "plain" ? "normal" : "tableCell"
+    cells: repairEscapedPipeCells(row, expectedColumns).map((value) => ({
+      value,
+      styleRole: styleRoleForTableCell(rowIndex, headerRow, tableStyle)
+    }))
+  }));
+}
+
+function splitMarkdownTableLine(line: string): string[] {
+  const trimmed = line.trim().replace(/^\|/, "").replace(/\|$/, "");
+  const cells: string[] = [];
+  let cell = "";
+  for (let index = 0; index < trimmed.length; index += 1) {
+    const char = trimmed[index];
+    if (char === "|" && trimmed[index - 1] !== "\\") {
+      cells.push(cell.trim());
+      cell = "";
+      continue;
+    }
+    cell += char;
+  }
+  cells.push(cell.trim());
+  return cells;
+}
+
+function isMarkdownTableSeparator(line: string): boolean {
+  const cells = splitMarkdownTableLine(line);
+  return cells.length > 0 && cells.every((cell) => /^:?-{3,}:?$/.test(cell.trim()));
+}
+
+function unescapeMarkdownTableCell(value: string): string {
+  return value.replace(/\\([\\`*{}[\]()#+\-.!_|~])/g, "$1");
+}
+
+function paragraphTableRows(text: string, headerRow: boolean, tableStyle: Md2XlsxOptions["tableStyle"]): RowModel[] | undefined {
+  const lines = text.split(/\r?\n/).filter((line) => line.trim());
+  if (lines.length < 2 || !isMarkdownTableSeparator(lines[1])) {
+    return undefined;
+  }
+  const rawRows = [lines[0], ...lines.slice(2)].map((line) => splitMarkdownTableLine(line).map(unescapeMarkdownTableCell));
+  const expectedColumns = rawRows[0]?.length ?? 0;
+  if (expectedColumns < 1 || rawRows.some((row) => row.length !== expectedColumns)) {
+    return undefined;
+  }
+  return rawRows.map((row, rowIndex) => ({
+    kind: "table",
+    cells: row.map((value) => ({
+      value,
+      styleRole: styleRoleForTableCell(rowIndex, headerRow, tableStyle)
     }))
   }));
 }
@@ -60,6 +127,10 @@ function blockToRows(node: any, options: Required<Pick<Md2XlsxOptions, "headerRo
       const text = extractText(node).trim();
       if (!text) {
         return [];
+      }
+      const table = paragraphTableRows(text, options.headerRow, options.tableStyle);
+      if (table) {
+        return table;
       }
       const imageRefs = collectImageRefs(node);
       return imageRefs.length ? [imageRow(text, imageRefs)] : [textRow("paragraph", text)];
@@ -121,6 +192,7 @@ export function markdownToWorkbook(markdown: string, options: Md2XlsxOptions = {
   const tree = parseMarkdown(markdown);
   const headerRow = options.headerRow ?? true;
   const tableStyle = options.tableStyle ?? "bordered";
+  const sheetHeadingDepth = options.sheetHeadingDepth ?? 1;
 
   if (options.sheetMode !== "heading") {
     const name = options.title ?? "Sheet1";
@@ -131,20 +203,30 @@ export function markdownToWorkbook(markdown: string, options: Md2XlsxOptions = {
   const usedNames = new Set<string>();
   const sheets: SheetModel[] = [];
   let current: SheetModel = { name: uniqueSheetName(options.title ?? "Sheet1", usedNames), rows: [] };
+  const prefaceRows: RowModel[] = [];
+  let hasSplit = false;
 
   for (const child of tree.children ?? []) {
-    if (child.type === "heading" && (child.depth === 1 || child.depth === 2)) {
-      if (current.rows.length) {
+    const rows = blockToRows(child, { headerRow, tableStyle });
+    if (child.type === "heading" && child.depth === sheetHeadingDepth) {
+      if (hasSplit && current.rows.length) {
         sheets.push(finalizeSheet(current));
       }
-      current = { name: uniqueSheetName(extractText(child), usedNames), rows: [] };
-      current.rows.push(...blockToRows(child, { headerRow, tableStyle }));
+      current = { name: uniqueSheetName(extractText(child), usedNames), rows: hasSplit ? [] : [...prefaceRows] };
+      current.rows.push(...rows);
+      hasSplit = true;
       continue;
     }
-    current.rows.push(...blockToRows(child, { headerRow, tableStyle }));
+    if (hasSplit) {
+      current.rows.push(...rows);
+    } else {
+      prefaceRows.push(...rows);
+    }
   }
-  if (current.rows.length || sheets.length === 0) {
+  if (hasSplit && (current.rows.length || sheets.length === 0)) {
     sheets.push(finalizeSheet(current));
+  } else if (!hasSplit) {
+    sheets.push(finalizeSheet({ ...current, rows: prefaceRows }));
   }
   return { sheets, imageAssets: options.imageAssets };
 }
