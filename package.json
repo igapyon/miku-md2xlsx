@@ -6,6 +6,7 @@
   "scripts": {
     "test": "npm run build --silent && vitest run",
     "test:unit": "npm run build --silent && vitest run",
+    "test:semantic-roundtrip": "npm run build --silent && node tests/semantic-roundtrip.mjs",
     "test:watch": "vitest",
     "cli": "npm run build --silent && node scripts/miku-md2xlsx-cli.mjs",
     "smoke:version": "npm run build --silent && node scripts/miku-md2xlsx-cli.mjs --version",

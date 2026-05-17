@@ -1,0 +1,123 @@
+import { mkdtemp, readFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const xlsx2mdDir = path.join(rootDir, "workplace", "miku-xlsx2md");
+const tempDir = await mkdtemp(path.join(tmpdir(), "miku-md2xlsx-semantic-roundtrip-"));
+
+const cases = [
+  {
+    name: "basic",
+    fixture: "xlsx2md-basic-sample01.md",
+    tokens: ["Book: xlsx2md-basic-sample01.xlsx", "Table: 001", "項番", "登録日", "何かの登録日"]
+  },
+  {
+    name: "dense-table",
+    fixture: "table-basic-sample13.md",
+    tokens: ["Table: 001", "Table: 004", "方眼紙風のためにセル結合が多用されます", "Sabro"]
+  },
+  {
+    name: "display-format",
+    fixture: "display-format-sample01.md",
+    tokens: ["¥1,024,768", "98.7%", "令和8年3月17日"]
+  },
+  {
+    name: "formula",
+    fixture: "formula-basic-sample01.md",
+    tokens: ["基本数式サンプル", "arith", "15", "OK", "2024/3/17"]
+  },
+  {
+    name: "hyperlink",
+    fixture: "hyperlink-basic-sample01.md",
+    tokens: ["[Open example](https://example.com/)", "[Jump to Other](#other) (Other!A1)"]
+  },
+  {
+    name: "merge",
+    fixture: "merge-pattern-sample01.md",
+    tokens: ["[←M←]", "[↑M↑]", "※横結合のサンプルです", "※2x2結合のサンプルです"]
+  },
+  {
+    name: "chart",
+    fixture: "chart-basic-sample01.md",
+    tokens: ["Chart: 001", "Title: 棒グラフのグラフ", "Type: Bar Chart", "categories: 'chart-basic'!$B$4:$B$7"]
+  },
+  {
+    name: "image",
+    fixture: "image-basic-sample01.md",
+    tokens: ["Image: 001", "File: assets/image/image_001.png", "![image_001.png](assets/image/image_001.png)"]
+  }
+];
+
+function run(command, args, options = {}) {
+  const result = spawnSync(command, args, {
+    cwd: options.cwd ?? rootDir,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"]
+  });
+  if (result.status !== 0) {
+    process.stderr.write(result.stdout);
+    process.stderr.write(result.stderr);
+    throw new Error(`Command failed: ${command} ${args.join(" ")}`);
+  }
+  return result;
+}
+
+function normalizeMarkdown(value) {
+  return value
+    .replace(/\\([\\`*{}[\]()#+\-.!_|~$])/g, "$1")
+    .replace(/\r\n/g, "\n");
+}
+
+function assertContainsAll(source, tokens, label) {
+  const normalized = normalizeMarkdown(source);
+  const missing = tokens.filter((token) => !normalized.includes(token));
+  if (missing.length) {
+    throw new Error(`${label} is missing semantic token(s): ${missing.join(", ")}`);
+  }
+}
+
+if (!existsSync(path.join(xlsx2mdDir, "package.json"))) {
+  throw new Error("workplace/miku-xlsx2md is required for semantic round-trip checks.");
+}
+
+run("npm", ["run", "build:core"], { cwd: xlsx2mdDir });
+
+for (const testCase of cases) {
+  const fixturePath = path.join(rootDir, "tests", "fixtures", "from-xlsx2md", testCase.fixture);
+  const xlsxPath = path.join(tempDir, `${testCase.name}.xlsx`);
+  const returnedMarkdownPath = path.join(tempDir, `${testCase.name}.returned.md`);
+  const returnedZipPath = path.join(tempDir, `${testCase.name}.returned.zip`);
+
+  const originalMarkdown = await readFile(fixturePath, "utf8");
+  assertContainsAll(originalMarkdown, testCase.tokens, `${testCase.fixture} original Markdown`);
+
+  run(process.execPath, [
+    "scripts/miku-md2xlsx-cli.mjs",
+    fixturePath,
+    "--out",
+    xlsxPath,
+    "--sheet-mode",
+    "heading",
+    "--sheet-heading-depth",
+    "2"
+  ]);
+
+  run(process.execPath, [
+    "scripts/miku-xlsx2md-cli.mjs",
+    xlsxPath,
+    "--out",
+    returnedMarkdownPath,
+    "--zip",
+    returnedZipPath
+  ], { cwd: xlsx2mdDir });
+
+  const returnedMarkdown = await readFile(returnedMarkdownPath, "utf8");
+  assertContainsAll(returnedMarkdown, testCase.tokens, `${testCase.fixture} returned Markdown`);
+  process.stdout.write(`[semantic-roundtrip] ${testCase.fixture}\n`);
+}
+
+process.stdout.write(`[semantic-roundtrip] ${cases.length} fixture(s) passed\n`);
