@@ -11,6 +11,8 @@ This document tracks how `workplace/miku-xlsx2md/tests/fixtures/` is reused as
 - Keep generated local assets under the same relative `assets/` layout used by
   `miku-xlsx2md`.
 - Regenerate with `npm run fixtures:from-xlsx2md`.
+- Run optional semantic round-trip checks with `npm run test:semantic-roundtrip`
+  when `workplace/miku-xlsx2md` is available.
 
 ## Current Coverage
 
@@ -59,3 +61,5 @@ This document tracks how `workplace/miku-xlsx2md/tests/fixtures/` is reused as
 - Regenerate committed Markdown/assets with `npm run fixtures:from-xlsx2md`.
 - Add at least one semantic assertion when a new fixture category introduces a
   new Markdown pattern.
+- Expand `tests/semantic-roundtrip.mjs` only with semantic marker/value checks;
+  do not compare full Markdown text.
