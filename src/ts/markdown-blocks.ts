@@ -14,6 +14,10 @@ function imageRow(value: string, imageRefs: RowModel["imageRefs"]): RowModel {
   return { kind: "image", cells: [{ value, styleRole: "normal" }], imageRefs };
 }
 
+function quoteText(value: string): string {
+  return value.split(/\r?\n/).map((line) => `> ${line}`).join("\n");
+}
+
 function listItemText(item: any): string {
   const parts: string[] = [];
   for (const child of item.children ?? []) {
@@ -64,10 +68,23 @@ export function blockToRows(node: any, options: Required<Pick<Md2XlsxOptions, "h
       appendListRows(rows, node);
       return rows;
     }
+    case "blockquote":
+      return (node.children ?? []).flatMap((child: any) => blockToRows(child, options)).map((row: RowModel) => ({
+        ...row,
+        kind: row.kind === "table" ? row.kind : "paragraph",
+        cells: row.cells.map((cell, index) => ({
+          ...cell,
+          value: index === 0 ? quoteText(cell.value) : cell.value
+        }))
+      }));
     case "table":
       return tableRows(node, options.headerRow, options.tableStyle);
     case "code":
       return [textRow("code", String(node.value ?? ""), "code")];
+    case "html": {
+      const text = String(node.value ?? "").trim();
+      return text ? [textRow("paragraph", text)] : [];
+    }
     case "thematicBreak":
       return [textRow("separator", "", "separator")];
     default:

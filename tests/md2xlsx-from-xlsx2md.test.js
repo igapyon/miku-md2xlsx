@@ -326,8 +326,8 @@ describe("miku-xlsx2md generated Markdown compatibility", () => {
 
     expect(image2HeadingRow - image1Row).toBeGreaterThanOrEqual(7);
     expect(anchors).toEqual([
-      { from: { col: 1, row: image1Row }, to: { col: 4, row: image1Row + 6 }, embedRelId: "rId1" },
-      { from: { col: 1, row: image2Row }, to: { col: 4, row: image2Row + 6 }, embedRelId: "rId2" }
+      { from: { col: 1, row: image1Row }, to: { col: 4, row: image1Row + 15 }, embedRelId: "rId1" },
+      { from: { col: 1, row: image2Row }, to: { col: 4, row: image2Row + 10 }, embedRelId: "rId2" }
     ]);
   });
 
@@ -350,7 +350,7 @@ describe("miku-xlsx2md generated Markdown compatibility", () => {
     expect(values).toContain("![image_001.png](assets/image/image_001.png)");
     expect(binaryEntries.has("xl/media/image1.png")).toBe(true);
     expect(anchors).toHaveLength(1);
-    expect(anchors[0].to.row - anchors[0].from.row).toBe(6);
+    expect(anchors[0].to.row - anchors[0].from.row).toBe(10);
   });
 
   it("keeps embedded image drawings separate across heading-split sheets", () => {

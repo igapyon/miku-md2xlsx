@@ -55,7 +55,11 @@
     `tests/md2xlsx-from-xlsx2md.test.js`.
   - Optional semantic round-trip checks are available via
     `npm run test:semantic-roundtrip` for representative generated Markdown
-    fixtures.
+    fixtures, including rich text/link, cross-sheet formula, named range,
+    shape, image-only, and image/chart coexistence samples.
+  - Hand-written real Markdown coverage now includes blockquote, inline HTML,
+    HTML block, nested lists, long code blocks, and multiple tables mixed with
+    narrative paragraphs.
   - Verification last run: `npm run fixtures:from-xlsx2md`, `npm run test`,
     `npm run build:all`, `npm run smoke:bundle`, and `git diff --check`.
   - Final verification and handoff summary are updated. Next practical restart
@@ -84,6 +88,8 @@
     returned `.md`.
   - Compare semantic markers and representative values only; do not compare
     full Markdown text, whitespace, table formatting, or visual geometry.
+  - For image samples, check image markers, file names, and preserved semantic
+    references without requiring exact regenerated asset path equality.
   - Keep this separate from normal `npm test` because it depends on
     `workplace/miku-xlsx2md`.
 - Revisit image sizing controls after more real `miku-xlsx2md` image outputs or

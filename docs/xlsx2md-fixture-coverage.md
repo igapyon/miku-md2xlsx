@@ -63,3 +63,7 @@ This document tracks how `workplace/miku-xlsx2md/tests/fixtures/` is reused as
   new Markdown pattern.
 - Expand `tests/semantic-roundtrip.mjs` only with semantic marker/value checks;
   do not compare full Markdown text.
+- For image round-trip checks, prefer image marker/file-name preservation over
+  exact regenerated asset path equality.
+- For rich text round-trip checks, prefer representative plain text, links, and
+  stable inline markers over exact emphasis formatting.
