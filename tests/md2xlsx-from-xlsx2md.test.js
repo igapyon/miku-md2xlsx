@@ -20,7 +20,56 @@ function flatten(values) {
   return values.flat().join("\n");
 }
 
+const allGeneratedFixtureMarkdown = [
+  "chart-basic-sample01.md",
+  "chart-mixed-sample01.md",
+  "display-format-sample01.md",
+  "edge-empty-sample01.md",
+  "edge-weird-sheetname-sample01.md",
+  "formula-basic-sample01.md",
+  "formula-crosssheet-sample01.md",
+  "formula-shared-sample01.md",
+  "formula-spill-sample01.md",
+  "grid-layout-sample-01.md",
+  "hyperlink-basic-sample01.md",
+  "image-basic-sample01.md",
+  "image-basic-sample02/image-basic-sample02.md",
+  "merge-multiline-sample01.md",
+  "merge-pattern-sample01.md",
+  "named-range-sample01.md",
+  "narrative-vs-table-sample01.md",
+  "rich-markdown-escape-sample01.md",
+  "rich-text-github-sample01.md",
+  "rich-usecase-sample01.md",
+  "shape-basic-sample01.md",
+  "shape-block-arrow-sample01.md",
+  "shape-callout-sample01.md",
+  "shape-flowchart-sample01.md",
+  "table-basic-sample01.md",
+  "table-basic-sample02.md",
+  "table-basic-sample03.md",
+  "table-basic-sample11.md",
+  "table-basic-sample12.md",
+  "table-basic-sample13.md",
+  "table-basic-sample14.md",
+  "table-basic-sample15.md",
+  "table-basic-sample16.md",
+  "table-border-priority-sample01.md",
+  "xlsx2md-basic-sample01.md"
+];
+
 describe("miku-xlsx2md generated Markdown compatibility", () => {
+  it.each(allGeneratedFixtureMarkdown)("converts generated fixture Markdown: %s", async (fixtureName) => {
+    const markdown = await readFixture(fixtureName);
+    const xlsx = md2xlsx(markdown);
+    const entries = readWorkbookXmlEntries(xlsx);
+    const values = flatten(readWorksheetValues(entries));
+    const expectedBookName = fixtureName.split("/").at(-1).replace(/\.md$/, ".xlsx");
+
+    expect(readSheetNames(entries)).toEqual(["Sheet1"]);
+    expect(values).toContain(`Book: ${expectedBookName}`);
+  });
+
   it("converts the basic xlsx2md fixture Markdown without losing representative table values", async () => {
     const markdown = await readFixture("xlsx2md-basic-sample01.md");
     const xlsx = md2xlsx(markdown);
@@ -89,6 +138,19 @@ describe("miku-xlsx2md generated Markdown compatibility", () => {
     expect(rows).toContainEqual(["2", "[↑M↑]", "[↑M↑]"]);
   });
 
+  it("keeps horizontal and vertical merge marker patterns from xlsx2md merge fixtures", async () => {
+    const markdown = await readFixture("merge-pattern-sample01.md");
+    const model = markdownToXlsxModel(markdown);
+    const rows = model.sheets[0].rows.map((row) => row.cells.map((cell) => cell.value));
+    const values = flatten(rows);
+
+    expect(values).toContain("※横結合のサンプルです");
+    expect(values).toContain("※縦結合のサンプルです");
+    expect(values).toContain("※2x2結合のサンプルです");
+    expect(rows).toContainEqual(["1", "横結合", "[←M←]", "横結合", "[←M←]"]);
+    expect(rows).toContainEqual(["2", "[↑M↑]", "[↑M↑]", "[↑M↑]"]);
+  });
+
   it("keeps representative rich text Markdown output as workbook text", async () => {
     const markdown = await readFixture("rich-text-github-sample01.md");
     const model = markdownToXlsxModel(markdown);
@@ -98,6 +160,17 @@ describe("miku-xlsx2md generated Markdown compatibility", () => {
     expect(values).toContain("改行入り文字列で<br>一部だけ太字");
     expect(values).toContain("abc <ins>def</ins>");
     expect(values).toContain("<ins>24690</ins>");
+  });
+
+  it("keeps practical rich text and hyperlink table content from xlsx2md output", async () => {
+    const markdown = await readFixture("rich-usecase-sample01.md");
+    const model = markdownToXlsxModel(markdown);
+    const values = flatten(model.sheets[0].rows.map((row) => row.cells.map((cell) => cell.value)));
+
+    expect(values).toContain("[Apple](https://www.apple.com/)");
+    expect(values).toContain("Apple の製品が<ins>購入できます</ins>。");
+    expect(values).toContain("実店舗とともに<br>ネットショップでもお世話になっています。");
+    expect(values).toContain("池袋の激戦区で、生き残るのはどの店舗か。<br>→トルツメ: この部分は文面から外すことを提案。");
   });
 
   it("handles Markdown escape-heavy xlsx2md output as workbook text and table cells", async () => {
@@ -115,6 +188,84 @@ describe("miku-xlsx2md generated Markdown compatibility", () => {
     expect(values).toContain("# not heading");
     expect(rows).toContainEqual(["a \\| b", "a \\| b"]);
     expect(rows).toContainEqual(["Header | One", "Header *Two*", "Header [Three](x)"]);
+  });
+
+  it("keeps display formatted values from xlsx2md output", async () => {
+    const markdown = await readFixture("display-format-sample01.md");
+    const model = markdownToXlsxModel(markdown);
+    const rows = model.sheets[0].rows.map((row) => row.cells.map((cell) => cell.value));
+
+    expect(rows).toContainEqual(["3", "通貨", "value3", "¥1,024,768", "通貨"]);
+    expect(rows).toContainEqual(["7", "パーセンテージ", "value7", "98.7%", "パーセンテージ"]);
+    expect(rows).toContainEqual(["12", "和暦", "value12", "令和8年3月17日", "和暦"]);
+  });
+
+  it("keeps formula fixture cached/resolved values from xlsx2md output", async () => {
+    const markdown = await readFixture("formula-basic-sample01.md");
+    const model = markdownToXlsxModel(markdown);
+    const rows = model.sheets[0].rows.map((row) => row.cells.map((cell) => cell.value));
+
+    expect(rows).toContainEqual(["arith", "15"]);
+    expect(rows).toContainEqual(["if", "OK"]);
+    expect(rows).toContainEqual(["date", "2024/3/17"]);
+    expect(rows).toContainEqual(["value_num", "1234.5"]);
+  });
+
+  it("keeps multi-sheet formula and named range fixture content visible", async () => {
+    const formulaMarkdown = await readFixture("formula-crosssheet-sample01.md");
+    const namedRangeMarkdown = await readFixture("named-range-sample01.md");
+    const formulaModel = markdownToXlsxModel(formulaMarkdown, { sheetMode: "heading", sheetHeadingDepth: 2 });
+    const namedRangeModel = markdownToXlsxModel(namedRangeMarkdown, { sheetMode: "heading", sheetHeadingDepth: 2 });
+
+    expect(formulaModel.sheets.map((sheet) => sheet.name)).toEqual(["Sheet Sheet1", "Sheet Sheet2", "Sheet 日本語シート"]);
+    expect(flatten(formulaModel.sheets.flatMap((sheet) => sheet.rows.map((row) => row.cells.map((cell) => cell.value))))).toContain("日本語参照値");
+    expect(namedRangeModel.sheets.map((sheet) => sheet.name)).toEqual(["Sheet Summary", "Sheet Other"]);
+    expect(flatten(namedRangeModel.sheets.flatMap((sheet) => sheet.rows.map((row) => row.cells.map((cell) => cell.value))))).toContain("CrossRef CrossRef");
+  });
+
+  it("keeps xlsx2md chart metadata as semantic workbook text", async () => {
+    const markdown = await readFixture("chart-basic-sample01.md");
+    const model = markdownToXlsxModel(markdown);
+    const values = flatten(model.sheets[0].rows.map((row) => row.cells.map((cell) => cell.value)));
+
+    expect(values).toContain("Chart: 001 (B10)");
+    expect(values).toContain("Title: 棒グラフのグラフ");
+    expect(values).toContain("Type: Bar Chart");
+    expect(values).toContain("categories: 'chart-basic'!$B$4:$B$7");
+  });
+
+  it("keeps edge-case sheets and sparse content visible", async () => {
+    const emptyMarkdown = await readFixture("edge-empty-sample01.md");
+    const weirdNameMarkdown = await readFixture("edge-weird-sheetname-sample01.md");
+    const emptyModel = markdownToXlsxModel(emptyMarkdown, { sheetMode: "heading", sheetHeadingDepth: 2 });
+    const weirdNameModel = markdownToXlsxModel(weirdNameMarkdown, { sheetMode: "heading", sheetHeadingDepth: 2 });
+
+    expect(emptyModel.sheets.map((sheet) => sheet.name)).toEqual(["Sheet edge-empty"]);
+    expect(flatten(emptyModel.sheets[0].rows.map((row) => row.cells.map((cell) => cell.value)))).toContain("only-value");
+    expect(weirdNameModel.sheets.map((sheet) => sheet.name)).toEqual(["Sheet A B-東京&大阪.01"]);
+    expect(flatten(weirdNameModel.sheets[0].rows.map((row) => row.cells.map((cell) => cell.value)))).toContain("何かの登録日");
+  });
+
+  it("keeps dense table fixture sections visible", async () => {
+    const markdown = await readFixture("table-basic-sample13.md");
+    const model = markdownToXlsxModel(markdown);
+    const values = flatten(model.sheets[0].rows.map((row) => row.cells.map((cell) => cell.value)));
+
+    expect(values).toContain("Table: 001 (B3-T7)");
+    expect(values).toContain("Table: 004 (V10-AN14)");
+    expect(values).toContain("方眼紙風のためにセル結合が多用されます");
+    expect(values).toContain("Sabro");
+  });
+
+  it("keeps xlsx2md generated shape assets with the fixture assets", async () => {
+    await Promise.all([
+      access("tests/fixtures/from-xlsx2md/assets/shape-basic/shape_001.svg"),
+      access("tests/fixtures/from-xlsx2md/assets/shape-basic/shape_002.svg"),
+      access("tests/fixtures/from-xlsx2md/assets/shape-basic/shape_003.svg"),
+      access("tests/fixtures/from-xlsx2md/assets/shape-flowchart/shape_005.svg"),
+      access("tests/fixtures/from-xlsx2md/assets/shape-flowchart/shape_006.svg"),
+      access("tests/fixtures/from-xlsx2md/assets/shape-flowchart/shape_007.svg")
+    ]);
   });
 
   it("preserves xlsx2md image asset references as semantic workbook text", async () => {
