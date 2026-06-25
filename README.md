@@ -194,6 +194,10 @@ npm run build:bundle
 npm run smoke:bundle
 ```
 
+The XLSX package helper is vendored under `src/vendor/` as
+`miku-ms-office-core`. When updating it, replace the versioned vendor files and
+update the import in `src/ts/xlsx-writer.ts`.
+
 `workplace/` is a local scratch area for sister repository checkouts, generated
 verification files, and temporary artifacts. Only `workplace/.gitkeep` is
 tracked.
