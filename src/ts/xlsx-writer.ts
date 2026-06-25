@@ -1,4 +1,9 @@
-import { createZip, type ZipFileEntry } from "./zip-io.ts";
+import {
+  buildOpcContentTypesXml,
+  buildOpcRelationshipsXml,
+  writeZipPackage,
+  type ZipEntryInput
+} from "../vendor/miku-ms-office-core-0.5.1.mjs";
 import type { SheetModel, WorkbookModel } from "./types.ts";
 import {
   collectSheetDrawings,
@@ -14,36 +19,60 @@ import { hasWorksheetRelationships, worksheetRelsXml, worksheetXml } from "./xls
 import { xml } from "./xlsx-xml.ts";
 
 function contentTypes(sheetCount: number, drawings: SheetDrawing[]): string {
-  const sheets = Array.from({ length: sheetCount }, (_, index) => (
-    `<Override PartName="/xl/worksheets/sheet${index + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`
-  )).join("");
-  const drawingOverrides = drawings.map((drawing) => (
-    `<Override PartName="/xl/drawings/drawing${drawing.drawingIndex}.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/>`
-  )).join("");
-  const imageDefaults = Array.from(new Set(drawings.flatMap((drawing) => drawing.images.map((image) => mediaExtension(image.asset)))))
-    .map((extension) => `<Default Extension="${xml(extension)}" ContentType="${mediaContentType(extension)}"/>`)
-    .join("");
-  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
-<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
-<Default Extension="xml" ContentType="application/xml"/>
-${imageDefaults}
-<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
-<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
-<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>
-<Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>
-${sheets}
-${drawingOverrides}
-</Types>`;
+  const imageExtensions = Array.from(new Set(drawings.flatMap((drawing) => drawing.images.map((image) => mediaExtension(image.asset)))));
+  return buildOpcContentTypesXml({
+    defaults: [
+      {
+        extension: "rels",
+        contentType: "application/vnd.openxmlformats-package.relationships+xml"
+      },
+      { extension: "xml", contentType: "application/xml" },
+      ...imageExtensions.map((extension) => ({
+        extension,
+        contentType: mediaContentType(extension)
+      }))
+    ],
+    overrides: [
+      {
+        partName: "xl/workbook.xml",
+        contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"
+      },
+      {
+        partName: "xl/styles.xml",
+        contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"
+      },
+      { partName: "docProps/core.xml", contentType: "application/vnd.openxmlformats-package.core-properties+xml" },
+      { partName: "docProps/app.xml", contentType: "application/vnd.openxmlformats-officedocument.extended-properties+xml" },
+      ...Array.from({ length: sheetCount }, (_unused, index) => ({
+        partName: `xl/worksheets/sheet${index + 1}.xml`,
+        contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"
+      })),
+      ...drawings.map((drawing) => ({
+        partName: `xl/drawings/drawing${drawing.drawingIndex}.xml`,
+        contentType: "application/vnd.openxmlformats-officedocument.drawing+xml"
+      }))
+    ]
+  });
 }
 
 function rootRels(): string {
-  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
-<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/>
-<Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/>
-</Relationships>`;
+  return buildOpcRelationshipsXml([
+    {
+      id: "rId1",
+      type: "http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument",
+      target: "xl/workbook.xml"
+    },
+    {
+      id: "rId2",
+      type: "http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties",
+      target: "docProps/core.xml"
+    },
+    {
+      id: "rId3",
+      type: "http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties",
+      target: "docProps/app.xml"
+    }
+  ]);
 }
 
 function workbookXml(sheets: SheetModel[]): string {
@@ -57,14 +86,18 @@ function workbookXml(sheets: SheetModel[]): string {
 }
 
 function workbookRels(sheetCount: number): string {
-  const sheets = Array.from({ length: sheetCount }, (_, index) => (
-    `<Relationship Id="rId${index + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${index + 1}.xml"/>`
-  )).join("");
-  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-${sheets}
-<Relationship Id="rId${sheetCount + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
-</Relationships>`;
+  return buildOpcRelationshipsXml([
+    ...Array.from({ length: sheetCount }, (_unused, index) => ({
+      id: `rId${index + 1}`,
+      type: "http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet",
+      target: `worksheets/sheet${index + 1}.xml`
+    })),
+    {
+      id: `rId${sheetCount + 1}`,
+      type: "http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles",
+      target: "styles.xml"
+    }
+  ]);
 }
 
 function coreProps(): string {
@@ -89,7 +122,7 @@ export function writeXlsx(workbook: WorkbookModel): Uint8Array {
   const renderWorkbook = withReservedImagePreviewRows(workbook);
   const drawings = collectSheetDrawings(renderWorkbook);
   const drawingsBySheet = new Map(drawings.map((drawing) => [drawing.sheetIndex, drawing]));
-  const entries: ZipFileEntry[] = [
+  const entries: ZipEntryInput[] = [
     { path: "[Content_Types].xml", data: contentTypes(renderWorkbook.sheets.length, drawings) },
     { path: "_rels/.rels", data: rootRels() },
     { path: "xl/workbook.xml", data: workbookXml(renderWorkbook.sheets) },
@@ -123,5 +156,5 @@ export function writeXlsx(workbook: WorkbookModel): Uint8Array {
       data: image.asset.data
     })))
   ];
-  return createZip(entries);
+  return writeZipPackage(entries);
 }

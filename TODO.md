@@ -143,9 +143,11 @@
   Markdown handling notes, and sheet mode notes for AI-agent-readable usage.
 - CLI option validation rejects unsupported `--sheet-mode` and `--table-style`
   values, and the `--version` test compares CLI output with `package.json`.
-- Package version is updated to `0.5.0`.
-- Verification last run: `npm run fixtures:from-xlsx2md`, `npm run test`,
-  `npm run build:all`, `npm run smoke:bundle`, and `git diff --check`.
+- Vendored `miku-ms-office-core` is updated from `0.5.0` to `0.5.1`.
+- Package version is updated to `0.6.1`.
+- Verification last run: `npm run test`, `npm run build:all`,
+  `npm run smoke:bundle`, `npm run test:semantic-roundtrip`,
+  `node bundle/miku-md2xlsx.mjs --version`, and `git diff --check`.
 
 ## miku-soft Initialization Record
 

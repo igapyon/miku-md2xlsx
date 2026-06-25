@@ -1,6 +1,6 @@
 {
   "name": "miku-md2xlsx",
-  "version": "0.5.0",
+  "version": "0.6.1",
   "private": true,
   "type": "module",
   "scripts": {
@@ -23,8 +23,11 @@
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
-    "esbuild": "^0.27.7",
+    "esbuild": "^0.28.1",
     "typescript": "^5.7.3",
     "vitest": "^3.0.0"
+  },
+  "overrides": {
+    "esbuild": "^0.28.1"
   }
 }
