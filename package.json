@@ -1,6 +1,6 @@
 {
   "name": "miku-md2xlsx",
-  "version": "0.6.1",
+  "version": "0.6.5",
   "private": true,
   "type": "module",
   "scripts": {

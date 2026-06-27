@@ -144,7 +144,8 @@
 - CLI option validation rejects unsupported `--sheet-mode` and `--table-style`
   values, and the `--version` test compares CLI output with `package.json`.
 - Vendored `miku-ms-office-core` is updated from `0.5.0` to `0.5.1`.
-- Package version is updated to `0.6.1`.
+- The unused pre-core `src/ts/zip-io.ts` ZIP writer is removed.
+- Package version is updated to `0.6.5`.
 - Verification last run: `npm run test`, `npm run build:all`,
   `npm run smoke:bundle`, `npm run test:semantic-roundtrip`,
   `node bundle/miku-md2xlsx.mjs --version`, and `git diff --check`.
