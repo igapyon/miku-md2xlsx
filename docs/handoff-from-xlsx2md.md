@@ -141,8 +141,9 @@ README では、最初から次を明記する。
 - local relative image assets は CLI で best-effort に収集し、`.xlsx` の `xl/media/` に埋め込む。
 - Markdown image reference は semantic traceability のため workbook text としても残す。
 - 画像 preview は小さめの固定 anchor と予約空行で、後続行との重なりを避ける。
-- CLI bundle scripts と GitHub Release asset workflow を追加済み。
-- GitHub Release CLI bundle workflow は初回実行成功済み。
+- CLI/runtime bundle scripts と GitHub Release asset workflow を追加済み。
+- GitHub Release CLI/runtime bundle workflow は、GitHub Release published
+  起動で CLI bundle / runtime bundle / source bundle を生成・検証・添付する。
 - `workbook-model` は thin entrypoint とし、Markdown block conversion,
   table compatibility repair, sheet building, column hint calculation を
   focused modules に分離済み。
@@ -184,6 +185,7 @@ npm run fixtures:from-xlsx2md
 npm run test
 npm run build:all
 npm run smoke:bundle
+npm run smoke:runtime
 git diff --check
 ```
 

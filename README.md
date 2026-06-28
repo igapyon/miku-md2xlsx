@@ -187,12 +187,16 @@ Shared miku-soft reference information is in
 
 ## Development Notes
 
-Build and smoke-test the single-file CLI bundle:
+Build and smoke-test the release bundles:
 
 ```bash
 npm run build:bundle
 npm run smoke:bundle
+npm run smoke:runtime
 ```
+
+`build:bundle` generates the executable CLI bundle, the importable runtime
+bundle, and the source bundle under `bundle/`.
 
 The XLSX package helper is vendored under `src/vendor/` as
 `miku-ms-office-core`. When updating it, replace the versioned vendor files and

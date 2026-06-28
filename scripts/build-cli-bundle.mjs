@@ -48,6 +48,7 @@ async function createSourceArchive(outputPath) {
 async function main() {
   await fs.mkdir(bundleDir, { recursive: true });
   const outputPath = path.resolve(bundleDir, `${productName}.mjs`);
+  const runtimePath = path.resolve(bundleDir, `${productName}-runtime.mjs`);
   const sourcesPath = path.resolve(bundleDir, `${productName}-sources.tgz`);
 
   await build({
@@ -69,10 +70,21 @@ async function main() {
     outfile: outputPath
   });
   await fs.chmod(outputPath, 0o755);
+
+  await build({
+    entryPoints: ["src/ts/runtime.ts"],
+    bundle: true,
+    format: "esm",
+    platform: "node",
+    target: "node20",
+    outfile: runtimePath
+  });
+
   await createSourceArchive(sourcesPath);
 
   console.log("[build:bundle] generated dist/core.js");
   console.log(`[build:bundle] generated ${path.relative(rootDir, outputPath)}`);
+  console.log(`[build:bundle] generated ${path.relative(rootDir, runtimePath)}`);
   console.log(`[build:bundle] generated ${path.relative(rootDir, sourcesPath)}`);
 }
 
