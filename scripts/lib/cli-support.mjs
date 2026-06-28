@@ -10,9 +10,37 @@ generated workbook is written to the --out path.
 
 Usage:
   npm run cli -- <input.md> --out <output.xlsx> [options]
+  node bundle/miku-md2xlsx.mjs <input.md> --out <output.xlsx> [options]
+  npm run cli -- --version
+  npm run cli -- --help
 
-Arguments:
+Default behavior:
+  The input file is read as UTF-8 Markdown. The output workbook is written to
+  --out. Parent directories for --out are created when missing.
+
+Inputs:
   <input.md>                Input Markdown file path
+
+Outputs:
+  --out <file> is the generated Excel .xlsx workbook. Terminal stdout is only
+  used for --help and --version; conversion progress is not a machine-readable
+  output contract.
+
+Generated artifacts:
+  The generated workbook is safe to regenerate from the Markdown input and CLI
+  options. Build commands may also generate dist/ and bundle/ artifacts.
+
+Overwrite behavior:
+  Existing --out files are overwritten.
+
+Diagnostics / warnings:
+  CLI usage errors and unexpected runtime errors are written to stderr. Missing,
+  remote, and absolute image paths remain visible as workbook text references.
+
+Exit codes:
+  0  success, --help, or --version
+  1  conversion or file-system failure
+  2  invalid CLI usage
 
 Options:
   --out <file>              Output .xlsx path
@@ -49,10 +77,18 @@ Sheet mode notes:
     workbook title and ## headings are worksheet names.
 `;
 
+export class CliUsageError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "CliUsageError";
+    this.exitCode = 2;
+  }
+}
+
 function readOption(args, index, name) {
   const value = args[index + 1];
   if (!value || value.startsWith("--")) {
-    throw new Error(`${name} requires a value.`);
+    throw new CliUsageError(`${name} requires a value.`);
   }
   return value;
 }
@@ -74,21 +110,21 @@ function contentTypeForPath(value) {
 
 function readSheetHeadingDepth(value) {
   if (value !== "1" && value !== "2") {
-    throw new Error("--sheet-heading-depth must be 1 or 2.");
+    throw new CliUsageError("--sheet-heading-depth must be 1 or 2.");
   }
   return Number(value);
 }
 
 function readSheetMode(value) {
   if (value !== "single" && value !== "heading") {
-    throw new Error("--sheet-mode must be single or heading.");
+    throw new CliUsageError("--sheet-mode must be single or heading.");
   }
   return value;
 }
 
 function readTableStyle(value) {
   if (value !== "plain" && value !== "bordered") {
-    throw new Error("--table-style must be plain or bordered.");
+    throw new CliUsageError("--table-style must be plain or bordered.");
   }
   return value;
 }
@@ -152,19 +188,19 @@ export async function main(args) {
     } else if (arg === "--no-header-row") {
       options.headerRow = false;
     } else if (arg.startsWith("--")) {
-      throw new Error(`Unknown option: ${arg}`);
+      throw new CliUsageError(`Unknown option: ${arg}`);
     } else if (!input) {
       input = arg;
     } else {
-      throw new Error(`Unexpected argument: ${arg}`);
+      throw new CliUsageError(`Unexpected argument: ${arg}`);
     }
   }
 
   if (!input) {
-    throw new Error("Input Markdown file is required.");
+    throw new CliUsageError("Input Markdown file is required.");
   }
   if (!out) {
-    throw new Error("--out <file> is required.");
+    throw new CliUsageError("--out <file> is required.");
   }
 
   const markdown = await readFile(input, "utf8");

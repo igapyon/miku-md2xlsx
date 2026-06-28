@@ -1,6 +1,6 @@
 {
   "name": "miku-md2xlsx",
-  "version": "0.6.5",
+  "version": "0.6.6",
   "private": true,
   "type": "module",
   "scripts": {
@@ -11,6 +11,7 @@
     "cli": "npm run build --silent && node scripts/miku-md2xlsx-cli.mjs",
     "smoke:version": "npm run build --silent && node scripts/miku-md2xlsx-cli.mjs --version",
     "smoke:bundle": "node scripts/smoke-cli-bundle.mjs",
+    "smoke:runtime": "node scripts/smoke-runtime-bundle.mjs",
     "fixtures:from-xlsx2md": "node scripts/regenerate-xlsx2md-fixtures.mjs",
     "build": "node scripts/build-miku-md2xlsx.mjs",
     "build:bundle": "node scripts/build-cli-bundle.mjs",

@@ -81,11 +81,13 @@
 - `--sheet-mode heading` defaults to `#` sheet splits and supports
   `--sheet-heading-depth 2` for xlsx2md-style Markdown where `#` is the book
   title and `##` is the sheet heading.
-- Release CLI bundle scripts generate `bundle/miku-md2xlsx.mjs` and
-  `bundle/miku-md2xlsx-sources.tgz`, with bundle version/help/conversion smoke
-  coverage.
-- GitHub Release CLI bundle workflow builds, tests, smokes, stages, and uploads
-  the generated CLI bundle assets for `v*` tags.
+- Release bundle scripts generate `bundle/miku-md2xlsx.mjs`,
+  `bundle/miku-md2xlsx-runtime.mjs`, and `bundle/miku-md2xlsx-sources.tgz`,
+  with CLI bundle version/help/conversion smoke coverage and runtime import/API
+  smoke coverage.
+- GitHub Release CLI/runtime bundle workflow runs when a `v*` GitHub Release is
+  published, checks the release tag against `package.json`, builds from that
+  tag, tests, smokes, stages, and uploads the generated release assets.
 - First GitHub Release CLI bundle workflow run succeeded after adding an
   install timeout and quieter `npm ci` options.
 - Real-document style coverage includes xlsx2md-generated narrative, hyperlink,
@@ -145,10 +147,11 @@
   values, and the `--version` test compares CLI output with `package.json`.
 - Vendored `miku-ms-office-core` is updated from `0.5.0` to `0.5.1`.
 - The unused pre-core `src/ts/zip-io.ts` ZIP writer is removed.
-- Package version is updated to `0.6.5`.
-- Verification last run: `npm run test`, `npm run build:all`,
-  `npm run smoke:bundle`, `npm run test:semantic-roundtrip`,
-  `node bundle/miku-md2xlsx.mjs --version`, and `git diff --check`.
+- Package version is updated to `0.6.6`.
+- Verification last run: `npm test`, `npm run build:all`,
+  `npm run smoke:version`, `npm run smoke:bundle`,
+  `npm run smoke:runtime`, `npm run test:semantic-roundtrip`, and
+  `git diff --check`.
 
 ## miku-soft Initialization Record
 

@@ -21,6 +21,9 @@ describe("miku-md2xlsx CLI", () => {
     expect(result.status).toBe(0);
     expect(result.stdout).toContain("converts a Markdown file into an Excel .xlsx workbook");
     expect(result.stdout).toContain("Examples:");
+    expect(result.stdout).toContain("Outputs:");
+    expect(result.stdout).toContain("Overwrite behavior:");
+    expect(result.stdout).toContain("Exit codes:");
     expect(result.stdout).toContain("Markdown handling notes:");
     expect(result.stdout).toContain("Table cell values are written as strings.");
     expect(result.stdout).toContain("Sheet mode notes:");
@@ -36,7 +39,7 @@ describe("miku-md2xlsx CLI", () => {
       "invalid"
     ], { encoding: "utf8" });
 
-    expect(result.status).not.toBe(0);
+    expect(result.status).toBe(2);
     expect(result.stderr).toContain("--sheet-mode must be single or heading.");
   });
 
@@ -50,7 +53,7 @@ describe("miku-md2xlsx CLI", () => {
       "invalid"
     ], { encoding: "utf8" });
 
-    expect(result.status).not.toBe(0);
+    expect(result.status).toBe(2);
     expect(result.stderr).toContain("--table-style must be plain or bordered.");
   });
 

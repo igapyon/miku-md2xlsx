@@ -1,0 +1,96 @@
+name: Release CLI/runtime bundles
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+  PRODUCT_NAME: miku-md2xlsx
+  RELEASE_ASSETS_DIR: release-assets
+
+jobs:
+  release-cli-runtime-bundles:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Validate release tag
+        env:
+          TAG_NAME: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+          case "${TAG_NAME}" in
+            v*) ;;
+            *)
+              echo "Release tag must start with v: ${TAG_NAME}" >&2
+              exit 1
+              ;;
+          esac
+
+          version="${TAG_NAME#v}"
+          package_version="$(node -p "require('./package.json').version")"
+
+          case "${version}" in
+            "${package_version}"|"${package_version}".*) ;;
+            *)
+              echo "Release tag version (${version}) must match package.json version (${package_version}) or add a dot suffix such as ${package_version}.2." >&2
+              exit 1
+              ;;
+          esac
+
+          echo "RELEASE_VERSION=${version}" >> "${GITHUB_ENV}"
+
+      - name: Install dependencies
+        timeout-minutes: 10
+        run: npm ci --no-audit --no-fund --progress=false
+
+      - name: Build
+        run: npm run build
+
+      - name: Build release bundles
+        run: npm run build:bundle
+
+      - name: Test
+        run: npm run test:unit
+
+      - name: CLI bundle smoke
+        run: npm run smoke:bundle
+
+      - name: Runtime bundle smoke
+        run: npm run smoke:runtime
+
+      - name: Prepare release assets
+        run: |
+          set -euo pipefail
+          mkdir -p "${RELEASE_ASSETS_DIR}"
+          cp "bundle/${PRODUCT_NAME}.mjs" "${RELEASE_ASSETS_DIR}/${PRODUCT_NAME}-${RELEASE_VERSION}.mjs"
+          cp "bundle/${PRODUCT_NAME}-runtime.mjs" "${RELEASE_ASSETS_DIR}/${PRODUCT_NAME}-runtime-${RELEASE_VERSION}.mjs"
+          cp "bundle/${PRODUCT_NAME}-sources.tgz" "${RELEASE_ASSETS_DIR}/${PRODUCT_NAME}-sources-${RELEASE_VERSION}.tgz"
+
+      - name: Verify release assets
+        run: |
+          set -euo pipefail
+          test -s "${RELEASE_ASSETS_DIR}/${PRODUCT_NAME}-${RELEASE_VERSION}.mjs"
+          test -s "${RELEASE_ASSETS_DIR}/${PRODUCT_NAME}-runtime-${RELEASE_VERSION}.mjs"
+          test -s "${RELEASE_ASSETS_DIR}/${PRODUCT_NAME}-sources-${RELEASE_VERSION}.tgz"
+          test "$(find "${RELEASE_ASSETS_DIR}" -type f | wc -l | tr -d ' ')" = "3"
+
+      - name: Upload release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG_NAME: ${{ github.event.release.tag_name }}
+        run: gh release upload "${TAG_NAME}" "${RELEASE_ASSETS_DIR}"/* --clobber
