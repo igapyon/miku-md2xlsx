@@ -15,6 +15,9 @@
   restoration.
 - Expand structured `.xlsx` assertions further when new generated package
   contracts are added.
+- Add fixture coverage with real user-authored template workbooks for
+  `--template <xlsx>`, especially column widths, row heights, sheet views, and
+  rightmost-template-sheet reuse.
 - Review release asset contents when publishing the next GitHub Release.
 
 ## Maintenance Rules
@@ -57,6 +60,12 @@
 
 ## Completed Implementation Notes
 
+- Added initial `--template <xlsx>` support. Generated sheets are written over
+  matching template sheets, and generated sheets beyond the template sheet count
+  reuse the rightmost template sheet as their base.
+- Template mode reuses workbook styles, theme parts, and worksheet-level XML
+  settings where possible, while replacing template sheet data with generated
+  Markdown content.
 - `miku-xlsx2md` generated Markdown compatibility fixtures were added under
   `tests/fixtures/from-xlsx2md/`, including image assets under
   `tests/fixtures/from-xlsx2md/assets/image/`.
@@ -142,12 +151,13 @@
 - Markdown heading depths `#` through `######` map to distinct worksheet font
   sizes.
 - CLI `--help` output now includes a fuller command summary, examples,
-  Markdown handling notes, and sheet mode notes for AI-agent-readable usage.
+  Markdown handling notes, template mode notes, and sheet mode notes for
+  AI-agent-readable usage.
 - CLI option validation rejects unsupported `--sheet-mode` and `--table-style`
   values, and the `--version` test compares CLI output with `package.json`.
 - Vendored `miku-ms-office-core` is updated from `0.5.0` to `0.5.1`.
 - The unused pre-core `src/ts/zip-io.ts` ZIP writer is removed.
-- Package version is updated to `0.6.6`.
+- Package version is updated to `0.7.0`.
 - Verification last run: `npm test`, `npm run build:all`,
   `npm run smoke:version`, `npm run smoke:bundle`,
   `npm run smoke:runtime`, `npm run test:semantic-roundtrip`, and

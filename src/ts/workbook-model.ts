@@ -14,7 +14,7 @@ export function markdownToWorkbook(markdown: string, options: Md2XlsxOptions = {
     sheetHeadingDepth,
     title: options.title
   });
-  return { sheets: normalizeInternalHyperlinkTargets(sheets), imageAssets: options.imageAssets };
+  return { sheets: normalizeInternalHyperlinkTargets(sheets), imageAssets: options.imageAssets, templateXlsx: options.templateXlsx };
 }
 
 function normalizeInternalHyperlinkTargets(sheets: SheetModel[]): SheetModel[] {

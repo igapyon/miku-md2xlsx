@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { readFile } from "node:fs/promises";
 import { md2xlsx, markdownToXlsxModel } from "../dist/core.js";
-import { unzipStoredEntries } from "./helpers/zip.js";
+import { writeZipPackage } from "../src/vendor/miku-ms-office-core-0.5.1.mjs";
+import { unzipStoredBinaryEntries, unzipStoredEntries } from "./helpers/zip.js";
 import { readWorkbookXmlEntries, readWorksheetCells } from "./helpers/xlsx.js";
 
 describe("miku-md2xlsx core", () => {
@@ -121,5 +122,47 @@ describe("miku-md2xlsx core", () => {
     expect(entries.get("xl/workbook.xml")).toContain("売上メモ");
     expect(entries.get("xl/worksheets/sheet1.xml")).toContain("りんご");
     expect(entries.get("xl/worksheets/sheet1.xml")).toContain("確認済み");
+  });
+
+  it("writes generated sheets over matching template sheets and reuses the rightmost template sheet when needed", () => {
+    const templateEntries = Array.from(unzipStoredBinaryEntries(md2xlsx("# Template A\n\nTemplate-only A\n\n# Template B\n\nTemplate-only B", {
+      sheetMode: "heading"
+    })), ([path, data]) => ({
+      path,
+      data: path === "xl/styles.xml"
+        ? new TextEncoder().encode(new TextDecoder().decode(data).replace(/Calibri/g, "TemplateFont"))
+        : path === "xl/worksheets/sheet1.xml"
+        ? new TextEncoder().encode(new TextDecoder().decode(data).replace(/<c r="A1"[^>]*>/, '<c r="A1" t="inlineStr" s="7">'))
+        : path === "xl/worksheets/sheet2.xml"
+        ? new TextEncoder().encode(new TextDecoder().decode(data).replace(/<c r="A1"[^>]*>/, '<c r="A1" t="inlineStr" s="8">'))
+        : data
+    }));
+    templateEntries.push({
+      path: "xl/theme/theme1.xml",
+      data: "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?><a:theme xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\" name=\"Template Theme\"/>"
+    });
+    const xlsx = md2xlsx("# Generated A\n\nGenerated body A\n\n# Generated B\n\nGenerated body B\n\n# Generated C\n\nGenerated body C", {
+      sheetMode: "heading",
+      templateXlsx: writeZipPackage(templateEntries)
+    });
+    const entries = unzipStoredEntries(xlsx);
+    const sheet1Cells = readWorksheetCells(entries, 1);
+    const sheet2Cells = readWorksheetCells(entries, 2);
+    const sheet3Cells = readWorksheetCells(entries, 3);
+
+    expect(entries.get("xl/styles.xml")).toContain("TemplateFont");
+    expect(entries.get("xl/theme/theme1.xml")).toContain("Template Theme");
+    expect(entries.get("xl/workbook.xml")).toContain("Generated A");
+    expect(entries.get("xl/workbook.xml")).toContain("Generated B");
+    expect(entries.get("xl/workbook.xml")).toContain("Generated C");
+    expect(entries.get("xl/workbook.xml")).not.toContain("Template A");
+    expect(entries.get("xl/worksheets/sheet1.xml")).toContain("Generated body A");
+    expect(entries.get("xl/worksheets/sheet2.xml")).toContain("Generated body B");
+    expect(entries.get("xl/worksheets/sheet3.xml")).toContain("Generated body C");
+    expect(entries.get("xl/worksheets/sheet1.xml")).not.toContain("Template-only A");
+    expect(entries.get("xl/worksheets/sheet2.xml")).not.toContain("Template-only B");
+    expect(sheet1Cells[0].attributes.s).toBe("7");
+    expect(sheet2Cells[0].attributes.s).toBe("8");
+    expect(sheet3Cells[0].attributes.s).toBe("8");
   });
 });
