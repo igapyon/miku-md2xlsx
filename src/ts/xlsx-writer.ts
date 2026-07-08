@@ -15,10 +15,17 @@ import {
   withReservedImagePreviewRows
 } from "./xlsx-drawing.ts";
 import { stylesXml } from "./xlsx-styles.ts";
+import {
+  hasTemplateTheme,
+  readXlsxTemplateParts,
+  shouldCopyTemplateEntry,
+  templateGeneratedWorksheetXml,
+  type XlsxTemplateParts
+} from "./xlsx-template.ts";
 import { hasWorksheetRelationships, worksheetRelsXml, worksheetXml } from "./xlsx-worksheet.ts";
 import { xml } from "./xlsx-xml.ts";
 
-function contentTypes(sheetCount: number, drawings: SheetDrawing[]): string {
+function contentTypes(sheetCount: number, drawings: SheetDrawing[], template?: XlsxTemplateParts): string {
   const imageExtensions = Array.from(new Set(drawings.flatMap((drawing) => drawing.images.map((image) => mediaExtension(image.asset)))));
   return buildOpcContentTypesXml({
     defaults: [
@@ -41,6 +48,10 @@ function contentTypes(sheetCount: number, drawings: SheetDrawing[]): string {
         partName: "xl/styles.xml",
         contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"
       },
+      ...(hasTemplateTheme(template) ? [{
+        partName: "xl/theme/theme1.xml",
+        contentType: "application/vnd.openxmlformats-officedocument.theme+xml"
+      }] : []),
       { partName: "docProps/core.xml", contentType: "application/vnd.openxmlformats-package.core-properties+xml" },
       { partName: "docProps/app.xml", contentType: "application/vnd.openxmlformats-officedocument.extended-properties+xml" },
       ...Array.from({ length: sheetCount }, (_unused, index) => ({
@@ -85,7 +96,7 @@ function workbookXml(sheets: SheetModel[]): string {
 </workbook>`;
 }
 
-function workbookRels(sheetCount: number): string {
+function workbookRels(sheetCount: number, template?: XlsxTemplateParts): string {
   return buildOpcRelationshipsXml([
     ...Array.from({ length: sheetCount }, (_unused, index) => ({
       id: `rId${index + 1}`,
@@ -96,7 +107,12 @@ function workbookRels(sheetCount: number): string {
       id: `rId${sheetCount + 1}`,
       type: "http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles",
       target: "styles.xml"
-    }
+    },
+    ...(hasTemplateTheme(template) ? [{
+      id: `rId${sheetCount + 2}`,
+      type: "http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme",
+      target: "theme/theme1.xml"
+    }] : [])
   ]);
 }
 
@@ -122,18 +138,21 @@ export function writeXlsx(workbook: WorkbookModel): Uint8Array {
   const renderWorkbook = withReservedImagePreviewRows(workbook);
   const drawings = collectSheetDrawings(renderWorkbook);
   const drawingsBySheet = new Map(drawings.map((drawing) => [drawing.sheetIndex, drawing]));
+  const template = readXlsxTemplateParts(workbook.templateXlsx);
+  const generatedWorksheetEntries = renderWorkbook.sheets.map((sheet, index) => ({
+    path: `xl/worksheets/sheet${index + 1}.xml`,
+    data: templateGeneratedWorksheetXml(template, worksheetXml(sheet, drawingsBySheet.get(index + 1)), index + 1)
+  }));
   const entries: ZipEntryInput[] = [
-    { path: "[Content_Types].xml", data: contentTypes(renderWorkbook.sheets.length, drawings) },
+    ...(template?.entries.filter((entry) => shouldCopyTemplateEntry(entry.path)).map((entry) => ({ path: entry.path, data: entry.data })) ?? []),
+    { path: "[Content_Types].xml", data: contentTypes(renderWorkbook.sheets.length, drawings, template) },
     { path: "_rels/.rels", data: rootRels() },
     { path: "xl/workbook.xml", data: workbookXml(renderWorkbook.sheets) },
-    { path: "xl/_rels/workbook.xml.rels", data: workbookRels(renderWorkbook.sheets.length) },
-    { path: "xl/styles.xml", data: stylesXml() },
+    { path: "xl/_rels/workbook.xml.rels", data: workbookRels(renderWorkbook.sheets.length, template) },
+    { path: "xl/styles.xml", data: template?.stylesXml ?? stylesXml() },
     { path: "docProps/core.xml", data: coreProps() },
     { path: "docProps/app.xml", data: appProps(renderWorkbook.sheets.length) },
-    ...renderWorkbook.sheets.map((sheet, index) => ({
-      path: `xl/worksheets/sheet${index + 1}.xml`,
-      data: worksheetXml(sheet, drawingsBySheet.get(index + 1))
-    })),
+    ...generatedWorksheetEntries,
     ...renderWorkbook.sheets.flatMap((sheet, index) => {
       const drawing = drawingsBySheet.get(index + 1);
       return hasWorksheetRelationships(sheet, drawing)

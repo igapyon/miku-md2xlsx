@@ -44,6 +44,10 @@ Exit codes:
 
 Options:
   --out <file>              Output .xlsx path
+  --template <file>         Use a template .xlsx as the sheet-format source.
+                            Generated sheets overwrite matching template
+                            sheets; extra sheets reuse the rightmost template
+                            sheet as their base.
   --sheet-mode <mode>       single or heading (default: single)
   --sheet-heading-depth <n> Heading depth for sheet splits: 1 or 2 (default: 1)
   --title <value>           Workbook title or first sheet name
@@ -54,6 +58,7 @@ Options:
 
 Examples:
   npm run cli -- ./sample.md --out ./sample.xlsx
+  npm run cli -- ./sample.md --out ./sample.xlsx --template ./template.xlsx
   npm run cli -- ./sample.md --out ./sample.xlsx --sheet-mode heading
   npm run cli -- ./book.md --out ./book.xlsx --sheet-mode heading --sheet-heading-depth 2
 
@@ -69,6 +74,19 @@ Markdown handling notes:
     [←M←] extends a merge to the left, and [↑M↑] extends a merge upward.
   - A cell containing a single Markdown link is emitted as an Excel hyperlink
     when the target can be represented by Excel.
+
+Template mode notes:
+  - --template reads an existing .xlsx workbook as a formatting source.
+  - Generated sheet 1 is written over template sheet 1, generated sheet 2 over
+    template sheet 2, and so on.
+  - If generated sheets exceed the template sheet count, additional generated
+    sheets reuse the rightmost template sheet as their base.
+  - Generated Markdown cell values replace template sheet data. Existing
+    template cell values, formulas, charts, drawings, tables, pivot data, and
+    shared strings are not preserved as workbook content.
+  - Template workbook styles, theme parts, and worksheet-level settings are
+    reused where this generator can preserve them. This is template-assisted
+    workbook generation, not pixel-perfect Excel layout editing.
 
 Sheet mode notes:
   - single: create one worksheet from the whole Markdown document.
@@ -161,6 +179,7 @@ export async function main(args) {
 
   let input = "";
   let out = "";
+  let template = "";
   const options = {
     sheetMode: "single",
     sheetHeadingDepth: 1,
@@ -172,6 +191,9 @@ export async function main(args) {
     const arg = args[i];
     if (arg === "--out") {
       out = readOption(args, i, arg);
+      i += 1;
+    } else if (arg === "--template") {
+      template = readOption(args, i, arg);
       i += 1;
     } else if (arg === "--sheet-mode") {
       options.sheetMode = readSheetMode(readOption(args, i, arg));
@@ -205,6 +227,9 @@ export async function main(args) {
 
   const markdown = await readFile(input, "utf8");
   options.imageAssets = await collectImageAssets(markdown, input);
+  if (template) {
+    options.templateXlsx = await readFile(template);
+  }
   const workbook = md2xlsx(markdown, options);
   await mkdir(dirname(out), { recursive: true });
   await writeFile(out, workbook);

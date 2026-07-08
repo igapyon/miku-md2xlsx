@@ -30,11 +30,13 @@ export interface Md2XlsxOptions {
   tableStyle?: TableStyleMode;
   headerRow?: boolean;
   imageAssets?: Md2XlsxImageAsset[];
+  templateXlsx?: Uint8Array;
 }
 
 export interface WorkbookModel {
   sheets: SheetModel[];
   imageAssets?: Md2XlsxImageAsset[];
+  templateXlsx?: Uint8Array;
 }
 
 export interface SheetModel {

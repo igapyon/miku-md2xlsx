@@ -47,6 +47,12 @@ Split sheets by top-level headings:
 npm run cli -- ./sample.md --out ./sample.xlsx --sheet-mode heading
 ```
 
+Reuse an Excel template:
+
+```bash
+npm run cli -- ./sample.md --out ./sample.xlsx --template ./template.xlsx
+```
+
 Show help or version:
 
 ```bash
@@ -67,6 +73,8 @@ npm run cli -- --version
   cell-internal line breaks.
 - Local PNG, JPEG, and GIF images referenced by relative Markdown paths are
   embedded best-effort when the files exist next to the input Markdown.
+- Excel template reuse through `--template <xlsx>` writes generated sheet
+  values into template sheets and reuses workbook-level style/theme parts.
 - Markdown table cell values are written as strings. Numeric-looking,
   date-like, currency-like, and percentage-like text is not inferred or
   converted into Excel number/date cells.
@@ -172,6 +180,28 @@ Use plain table styling:
 ```bash
 npm run cli -- ./sample.md --out ./sample.xlsx --table-style plain
 ```
+
+Use an Excel template:
+
+```bash
+npm run cli -- ./sample.md --out ./sample.xlsx --template ./template.xlsx
+```
+
+`--template` treats the template workbook as a sheet-format source. The first
+generated sheet is written over the first template sheet, the second generated
+sheet over the second template sheet, and so on. When generated sheets exceed
+the number of template sheets, the rightmost template sheet is reused as the
+base for additional sheets.
+
+Generated Markdown cell values replace the template sheet data. Template
+workbook styles, theme parts, and worksheet-level settings are reused where the
+current generator can preserve them. Template formulas, charts, drawings,
+tables, pivot data, shared strings, and existing cell values are not preserved
+as workbook content in the generated output.
+
+Use template mode when the workbook needs a predefined visual frame, column or
+row settings, or sheet-level setup. Do not use it when existing workbook
+formulas, charts, drawings, or table objects must remain live after generation.
 
 ## Current Status
 

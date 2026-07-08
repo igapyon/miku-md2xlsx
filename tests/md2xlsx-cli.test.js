@@ -3,6 +3,8 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
+import { md2xlsx } from "../dist/core.js";
+import { writeZipPackage } from "../src/vendor/miku-ms-office-core-0.5.1.mjs";
 import { unzipStoredBinaryEntries, unzipStoredEntries } from "./helpers/zip.js";
 import { readSheetNames } from "./helpers/xlsx.js";
 import packageJson from "../package.json" with { type: "json" };
@@ -26,7 +28,10 @@ describe("miku-md2xlsx CLI", () => {
     expect(result.stdout).toContain("Exit codes:");
     expect(result.stdout).toContain("Markdown handling notes:");
     expect(result.stdout).toContain("Table cell values are written as strings.");
+    expect(result.stdout).toContain("Template mode notes:");
+    expect(result.stdout).toContain("rightmost template sheet");
     expect(result.stdout).toContain("Sheet mode notes:");
+    expect(result.stdout).toContain("--template <file>");
   });
 
   it("rejects unsupported sheet mode values", () => {
@@ -73,6 +78,43 @@ describe("miku-md2xlsx CLI", () => {
       expect(result.status).toBe(0);
       const entries = unzipStoredEntries(await readFile(out));
       expect(entries.get("xl/workbook.xml")).toContain("売上メモ");
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("writes an xlsx file using template sheets", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "miku-md2xlsx-"));
+    const input = join(dir, "input.md");
+    const template = join(dir, "template.xlsx");
+    const out = join(dir, "out.xlsx");
+    try {
+      await writeFile(input, "# Generated A\n\nGenerated body A\n\n# Generated B\n\nGenerated body B\n", "utf8");
+      const templateEntries = Array.from(unzipStoredBinaryEntries(md2xlsx("# Template A\n\nTemplate-only A", {
+        sheetMode: "heading"
+      })), ([path, data]) => ({ path, data }));
+      templateEntries.push({
+        path: "xl/theme/theme1.xml",
+        data: "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?><a:theme xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\" name=\"CLI Template Theme\"/>"
+      });
+      await writeFile(template, writeZipPackage(templateEntries));
+      const result = spawnSync(process.execPath, [
+        "scripts/miku-md2xlsx-cli.mjs",
+        input,
+        "--out",
+        out,
+        "--sheet-mode",
+        "heading",
+        "--template",
+        template
+      ], { encoding: "utf8" });
+
+      expect(result.status).toBe(0);
+      const entries = unzipStoredEntries(await readFile(out));
+      expect(entries.get("xl/theme/theme1.xml")).toContain("CLI Template Theme");
+      expect(entries.get("xl/worksheets/sheet1.xml")).toContain("Generated body A");
+      expect(entries.get("xl/worksheets/sheet2.xml")).toContain("Generated body B");
+      expect(entries.get("xl/worksheets/sheet1.xml")).not.toContain("Template-only A");
     } finally {
       await rm(dir, { recursive: true, force: true });
     }
