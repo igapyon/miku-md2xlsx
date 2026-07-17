@@ -1,0 +1,273 @@
+import { readFile, writeFile } from "node:fs/promises";
+import { dirname, isAbsolute, resolve } from "node:path";
+import { mkdir } from "node:fs/promises";
+import { markdownToXlsxModel, md2xlsx } from "../../dist/core.js";
+import packageJson from "../../package.json" with { type: "json" };
+
+const usage = `miku-md2xlsx converts a Markdown file into an Excel .xlsx workbook.
+It is a local file converter: the input Markdown is read from disk and the
+generated workbook is written to the --out path.
+
+Usage:
+  npm run cli -- <input.md> --out <output.xlsx> [options]
+  node bundle/miku-md2xlsx.mjs <input.md> --out <output.xlsx> [options]
+  npm run cli -- --version
+  npm run cli -- --help
+
+Default behavior:
+  The input file is read as UTF-8 Markdown. The output workbook is written to
+  --out. Parent directories for --out are created when missing.
+
+Inputs:
+  <input.md>                Input Markdown file path
+
+Outputs:
+  --out <file> is the generated Excel .xlsx workbook. Terminal stdout is only
+  used for --help and --version; conversion progress is not a machine-readable
+  output contract.
+
+Generated artifacts:
+  The generated workbook is safe to regenerate from the Markdown input and CLI
+  options. Build commands may also generate dist/ and bundle/ artifacts.
+
+Overwrite behavior:
+  Existing --out files are overwritten.
+
+Diagnostics / warnings:
+  CLI usage errors and unexpected runtime errors are written to stderr. Missing,
+  remote, and absolute image paths remain visible as workbook text references.
+
+Exit codes:
+  0  success, --help, or --version
+  1  conversion or file-system failure
+  2  invalid CLI usage
+
+Options:
+  --out <file>              Output .xlsx path
+  --template <file>         Use a template .xlsx as the sheet-format source.
+                            Generated sheets overwrite matching template
+                            sheets; extra sheets reuse the rightmost template
+                            sheet as their base.
+  --input-dialect <name>    markdown or miku-xlsx2md (default: markdown).
+                            miku-xlsx2md is an early access feature.
+  --sheet-mode <mode>       single or heading (default: single)
+  --sheet-heading-depth <n> Heading depth for sheet splits: 1 or 2 (default: 1)
+  --title <value>           Workbook title or first sheet name
+  --table-style <mode>      plain or bordered (default: bordered)
+  --no-header-row           Do not style first Markdown table row as a header
+  --help                    Show this help
+  --version                 Show version
+
+Examples:
+  npm run cli -- ./sample.md --out ./sample.xlsx
+  npm run cli -- ./sample.md --out ./sample.xlsx --template ./template.xlsx
+  npm run cli -- ./book.md --out ./book.xlsx --input-dialect miku-xlsx2md
+  npm run cli -- ./sample.md --out ./sample.xlsx --sheet-mode heading
+  npm run cli -- ./book.md --out ./book.xlsx --sheet-mode heading --sheet-heading-depth 2
+
+Markdown handling notes:
+  - Headings, paragraphs, lists, tables, code blocks, horizontal rules, links,
+    common inline styles, and local PNG/JPEG/GIF image references are supported.
+  - Table cell values are written as strings. Numeric-looking and date-like
+    Markdown text is not inferred as Excel numbers or dates.
+  - Relative local image references are embedded best-effort when the asset file
+    exists next to the input Markdown. Missing, remote, and absolute image paths
+    remain visible as text references.
+  - miku-xlsx2md merge markers in table cells are treated as Excel merges:
+    [←M←] extends a merge to the left, and [↑M↑] extends a merge upward.
+  - A cell containing a single Markdown link is emitted as an Excel hyperlink
+    when the target can be represented by Excel.
+
+Template mode notes:
+  - --template reads an existing .xlsx workbook as a formatting source.
+  - Generated sheet 1 is written over template sheet 1, generated sheet 2 over
+    template sheet 2, and so on.
+  - If generated sheets exceed the template sheet count, additional generated
+    sheets reuse the rightmost template sheet as their base.
+  - Generated Markdown cell values replace template sheet data. Existing
+    template cell values, formulas, charts, drawings, tables, pivot data, and
+    shared strings are not preserved as workbook content.
+  - Template workbook styles, theme parts, and worksheet-level settings are
+    reused where this generator can preserve them. This is template-assisted
+    workbook generation, not pixel-perfect Excel layout editing.
+
+Sheet mode notes:
+  - single: create one worksheet from the whole Markdown document.
+  - heading: split worksheets at headings matching --sheet-heading-depth.
+  - Use --sheet-heading-depth 2 to split generic Markdown at ## headings without
+    interpreting miku-xlsx2md metadata.
+
+miku-xlsx2md dialect notes:
+  - Early access: this input dialect and its restoration behavior may change.
+  - Use it for Markdown generated by miku-xlsx2md when semantic round-trip
+    restoration is wanted.
+  - # Book: is consumed as a structural marker and is not written to a cell.
+  - ## Sheet: starts a worksheet and restores its name subject to Excel sheet
+    name restrictions and duplicate-name adjustment.
+  - ### Table: N (A1-C4) anchors the immediately following Markdown table at
+    that worksheet range, including supported merge markers.
+  - Do not combine this dialect with --sheet-mode or --sheet-heading-depth;
+    such combinations are rejected as invalid CLI usage.
+  - --title is used as the fallback sheet name only when no ## Sheet: marker
+    exists.
+  - Invalid Sheet:/Table: markers, or a Table: marker without an immediately
+    following Markdown table, cause conversion to fail instead of being guessed.
+`;
+
+export class CliUsageError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "CliUsageError";
+    this.exitCode = 2;
+  }
+}
+
+function readOption(args, index, name) {
+  const value = args[index + 1];
+  if (!value || value.startsWith("--")) {
+    throw new CliUsageError(`${name} requires a value.`);
+  }
+  return value;
+}
+
+function isLocalRelativeImagePath(value) {
+  return !isAbsolute(value) && !/^[a-z][a-z0-9+.-]*:/i.test(value) && !value.startsWith("//");
+}
+
+function contentTypeForPath(value) {
+  const lower = value.toLowerCase();
+  if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) {
+    return "image/jpeg";
+  }
+  if (lower.endsWith(".gif")) {
+    return "image/gif";
+  }
+  return "image/png";
+}
+
+function readSheetHeadingDepth(value) {
+  if (value !== "1" && value !== "2") {
+    throw new CliUsageError("--sheet-heading-depth must be 1 or 2.");
+  }
+  return Number(value);
+}
+
+function readSheetMode(value) {
+  if (value !== "single" && value !== "heading") {
+    throw new CliUsageError("--sheet-mode must be single or heading.");
+  }
+  return value;
+}
+
+function readTableStyle(value) {
+  if (value !== "plain" && value !== "bordered") {
+    throw new CliUsageError("--table-style must be plain or bordered.");
+  }
+  return value;
+}
+
+function readInputDialect(value) {
+  if (value !== "markdown" && value !== "miku-xlsx2md") {
+    throw new CliUsageError("--input-dialect must be markdown or miku-xlsx2md.");
+  }
+  return value;
+}
+
+async function collectImageAssets(markdown, inputPath, inputDialect) {
+  const inputDir = dirname(resolve(inputPath));
+  const model = markdownToXlsxModel(markdown, { inputDialect });
+  const paths = model.sheets.flatMap((sheet) => sheet.rows.flatMap((row) => (row.imageRefs ?? []).map((ref) => ref.path)));
+  const uniquePaths = Array.from(new Set(paths)).filter(isLocalRelativeImagePath);
+  const assets = [];
+  for (const imagePath of uniquePaths) {
+    try {
+      assets.push({
+        path: imagePath,
+        data: await readFile(resolve(inputDir, imagePath)),
+        contentType: contentTypeForPath(imagePath)
+      });
+    } catch {
+      // Missing assets are kept as text references. Embedding is best-effort.
+    }
+  }
+  return assets;
+}
+
+export async function main(args) {
+  if (args.includes("--help") || args.length === 0) {
+    process.stdout.write(usage);
+    return;
+  }
+  if (args.includes("--version")) {
+    process.stdout.write(`${packageJson.version}\n`);
+    return;
+  }
+
+  let input = "";
+  let out = "";
+  let template = "";
+  let sheetModeWasSpecified = false;
+  let sheetHeadingDepthWasSpecified = false;
+  const options = {
+    inputDialect: "markdown",
+    sheetMode: "single",
+    sheetHeadingDepth: 1,
+    tableStyle: "bordered",
+    headerRow: true
+  };
+
+  for (let i = 0; i < args.length; i += 1) {
+    const arg = args[i];
+    if (arg === "--out") {
+      out = readOption(args, i, arg);
+      i += 1;
+    } else if (arg === "--template") {
+      template = readOption(args, i, arg);
+      i += 1;
+    } else if (arg === "--input-dialect") {
+      options.inputDialect = readInputDialect(readOption(args, i, arg));
+      i += 1;
+    } else if (arg === "--sheet-mode") {
+      options.sheetMode = readSheetMode(readOption(args, i, arg));
+      sheetModeWasSpecified = true;
+      i += 1;
+    } else if (arg === "--sheet-heading-depth") {
+      options.sheetHeadingDepth = readSheetHeadingDepth(readOption(args, i, arg));
+      sheetHeadingDepthWasSpecified = true;
+      i += 1;
+    } else if (arg === "--title") {
+      options.title = readOption(args, i, arg);
+      i += 1;
+    } else if (arg === "--table-style") {
+      options.tableStyle = readTableStyle(readOption(args, i, arg));
+      i += 1;
+    } else if (arg === "--no-header-row") {
+      options.headerRow = false;
+    } else if (arg.startsWith("--")) {
+      throw new CliUsageError(`Unknown option: ${arg}`);
+    } else if (!input) {
+      input = arg;
+    } else {
+      throw new CliUsageError(`Unexpected argument: ${arg}`);
+    }
+  }
+
+  if (!input) {
+    throw new CliUsageError("Input Markdown file is required.");
+  }
+  if (!out) {
+    throw new CliUsageError("--out <file> is required.");
+  }
+  if (options.inputDialect === "miku-xlsx2md" && (sheetModeWasSpecified || sheetHeadingDepthWasSpecified)) {
+    throw new CliUsageError("--input-dialect miku-xlsx2md cannot be combined with --sheet-mode or --sheet-heading-depth.");
+  }
+
+  const markdown = await readFile(input, "utf8");
+  options.imageAssets = await collectImageAssets(markdown, input, options.inputDialect);
+  if (template) {
+    options.templateXlsx = await readFile(template);
+  }
+  const workbook = md2xlsx(markdown, options);
+  await mkdir(dirname(out), { recursive: true });
+  await writeFile(out, workbook);
+}
