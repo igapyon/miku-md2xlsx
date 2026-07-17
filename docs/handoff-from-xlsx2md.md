@@ -6,7 +6,7 @@
 
 `miku-md2xlsx` は、Markdown から実用的な Excel (`.xlsx`) Workbook を生成する miku-soft main application として扱う。
 
-`miku-xlsx2md` の完全な逆変換ツールではない。`miku-xlsx2md` は Excel Workbook から、生成 AI や人間が読みやすい Markdown 向け成果物を抽出するツールであり、Excel の見た目を完全再現することを目的にしていない。そのため、`xlsx -> md -> xlsx` の完全な round trip は非目標とする。
+`miku-xlsx2md` のピクセル単位の完全な逆変換ツールではない。`miku-xlsx2md` は Excel Workbook から、生成 AI や人間が読みやすい Markdown 向け成果物を抽出するツールであり、Excel の見た目を完全再現することを目的にしていない。一方で、早期アクセス機能の専用入力 dialect により sheet 名、宣言された table 範囲、対応する結合セルを戻す semantic round trip を提供する。この dialect と復元動作は早期アクセス期間中に変更される可能性がある。
 
 このプロジェクトの自然な価値は、Markdown を起点に、配布・確認・編集しやすい Excel Workbook を生成することにある。
 
@@ -22,8 +22,8 @@
 
 ## 非目標
 
-- `miku-xlsx2md` 出力から元 Excel を完全復元すること。
-- 元 Workbook のセル番地、列幅、行高、結合セル、条件付き書式、テーマ、詳細スタイルを復元すること。
+- `miku-xlsx2md` 出力から元 Excel の見た目を完全復元すること。
+- table metadata の範囲外にある元 Workbook のセル番地、列幅、行高、条件付き書式、テーマ、詳細スタイルを復元すること。
 - Excel 数式、cached value、外部参照、構造化参照を完全再構成すること。
 - chart / shape / drawing / SmartArt を完全再構築すること。
 - カレンダー、プランナー、帳票風シートのピクセル単位レイアウトを再現すること。
@@ -63,6 +63,7 @@ npm run cli -- input.md --out output.xlsx
 
 - `--out <file>`: 出力 `.xlsx` パス。
 - `--sheet-mode <mode>`: `single` または `heading`。
+- `--input-dialect <name>`: `markdown` または `miku-xlsx2md`。
 - `--title <value>`: Workbook または先頭 sheet の表示名補助。
 - `--table-style <mode>`: `plain` または `bordered`。
 - `--no-header-row`: Markdown table の先頭行をヘッダ扱いしない。
@@ -137,7 +138,9 @@ README では、最初から次を明記する。
 - `Markdown AST -> WorkbookModel -> .xlsx` の段階構成を採用済み。
 - `single table -> xlsx` と `heading split -> multiple sheets` を実装済み。
 - `--sheet-mode heading` は既定で `#` を sheet split に使う。
-- `--sheet-heading-depth 2` により、`miku-xlsx2md` 生成 Markdown の `# Book` / `## Sheet` 形式にも対応。
+- 早期アクセス機能の `--input-dialect miku-xlsx2md` により、`# Book:` を構造マーカーとして除外し、Excel の命名制約内で `## Sheet:` の sheet 名と `### Table: N (A1-C4)` の table 配置を復元する。
+- `--sheet-heading-depth 2` は、専用 metadata を解釈せず一般 Markdown の `##` で sheet 分割する用途として引き続き利用できる。
+- 専用 dialect と `--sheet-mode` / `--sheet-heading-depth` の併用は CLI usage error とする。不正な `Sheet:` / `Table:` marker や、直後に Markdown table がない `Table:` marker は推測せず変換エラーとする。
 - local relative image assets は CLI で best-effort に収集し、`.xlsx` の `xl/media/` に埋め込む。
 - Markdown image reference は semantic traceability のため workbook text としても残す。
 - 画像 preview は小さめの固定 anchor と予約空行で、後続行との重なりを避ける。
@@ -183,6 +186,7 @@ npm run fixtures:from-xlsx2md
 ```bash
 npm run fixtures:from-xlsx2md
 npm run test
+npm run test:semantic-roundtrip
 npm run build:all
 npm run smoke:bundle
 npm run smoke:runtime

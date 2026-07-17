@@ -15,7 +15,7 @@ const cases = [
   {
     name: "basic",
     fixture: "xlsx2md-basic-sample01.md",
-    tokens: ["Book: xlsx2md-basic-sample01.xlsx", "Table: 001", "項番", "登録日", "何かの登録日"]
+    tokens: ["Table: 001", "項番", "登録日", "何かの登録日"]
   },
   {
     name: "dense-table",
@@ -124,6 +124,40 @@ function assertContainsAll(source, tokens, label) {
   }
 }
 
+function sheetNames(value) {
+  return Array.from(value.matchAll(/^## Sheet:\s*(.+)$/gm), (match) => match[1].trim());
+}
+
+function tableAnchors(value) {
+  let currentSheet = "";
+  const anchors = new Set();
+  for (const line of value.split(/\r?\n/)) {
+    const sheet = line.match(/^## Sheet:\s*(.+)$/);
+    if (sheet) {
+      currentSheet = sheet[1].trim();
+      continue;
+    }
+    const table = line.match(/^### Table:\s*\d+\s*\(([A-Z]+\d+-[A-Z]+\d+)\)\s*$/i);
+    if (table) {
+      anchors.add(`${currentSheet}:${table[1].toUpperCase()}`);
+    }
+  }
+  return Array.from(anchors).sort();
+}
+
+function assertEqualStructure(original, returned, label) {
+  const originalSheets = sheetNames(original);
+  const returnedSheets = sheetNames(returned);
+  if (JSON.stringify(returnedSheets) !== JSON.stringify(originalSheets)) {
+    throw new Error(`${label} sheet names differ: expected ${JSON.stringify(originalSheets)}, received ${JSON.stringify(returnedSheets)}`);
+  }
+  const originalTables = tableAnchors(original);
+  const returnedTables = tableAnchors(returned);
+  if (JSON.stringify(returnedTables) !== JSON.stringify(originalTables)) {
+    throw new Error(`${label} table anchors differ: expected ${JSON.stringify(originalTables)}, received ${JSON.stringify(returnedTables)}`);
+  }
+}
+
 if (!existsSync(path.join(xlsx2mdDir, "package.json"))) {
   throw new Error("workplace/miku-xlsx2md is required for semantic round-trip checks.");
 }
@@ -144,10 +178,8 @@ for (const testCase of cases) {
     fixturePath,
     "--out",
     xlsxPath,
-    "--sheet-mode",
-    "heading",
-    "--sheet-heading-depth",
-    "2"
+    "--input-dialect",
+    "miku-xlsx2md"
   ]);
 
   run(process.execPath, [
@@ -161,6 +193,7 @@ for (const testCase of cases) {
 
   const returnedMarkdown = await readFile(returnedMarkdownPath, "utf8");
   assertContainsAll(returnedMarkdown, testCase.tokens, `${testCase.fixture} returned Markdown`);
+  assertEqualStructure(originalMarkdown, returnedMarkdown, `${testCase.fixture} semantic structure`);
   process.stdout.write(`[semantic-roundtrip] ${testCase.fixture}\n`);
   process.stdout.write(`  xlsx: ${xlsxPath}\n`);
   process.stdout.write(`  returned md: ${returnedMarkdownPath}\n`);
