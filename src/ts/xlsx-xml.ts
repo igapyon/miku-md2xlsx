@@ -8,7 +8,7 @@ export function xml(value: string): string {
 }
 
 export function sanitizeXmlText(value: string): string {
-  return value.replace(/[^\u0009\u000A\u000D\u0020-\uD7FF\uE000-\uFFFD]/g, "");
+  return value.replace(/[^\u0009\u000A\u000D\u0020-\uD7FF\uE000-\u{10FFFF}]/gu, "");
 }
 
 export function inlineTextXml(value: string): string {

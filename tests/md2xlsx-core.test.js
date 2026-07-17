@@ -61,6 +61,14 @@ describe("miku-md2xlsx core", () => {
     ]);
   });
 
+  it("preserves supplementary Unicode characters in worksheet text", () => {
+    const xlsx = md2xlsx("| kind | value |\n| --- | --- |\n| Unicode | 😀 🐇 𠮷野家 |\n");
+    const entries = readWorkbookXmlEntries(xlsx);
+    const cells = readWorksheetCells(entries);
+
+    expect(cells.some((cell) => cell.text === "😀 🐇 𠮷野家")).toBe(true);
+  });
+
   it("uses wider column hints for text-heavy block rows", () => {
     const model = markdownToXlsxModel("# Title\n\nshort\n\n- item\n\n```text\ncode\n```\n");
 
@@ -127,16 +135,22 @@ describe("miku-md2xlsx core", () => {
   it("writes generated sheets over matching template sheets and reuses the rightmost template sheet when needed", () => {
     const templateEntries = Array.from(unzipStoredBinaryEntries(md2xlsx("# Template A\n\nTemplate-only A\n\n# Template B\n\nTemplate-only B", {
       sheetMode: "heading"
-    })), ([path, data]) => ({
-      path,
-      data: path === "xl/styles.xml"
-        ? new TextEncoder().encode(new TextDecoder().decode(data).replace(/Calibri/g, "TemplateFont"))
-        : path === "xl/worksheets/sheet1.xml"
-        ? new TextEncoder().encode(new TextDecoder().decode(data).replace(/<c r="A1"[^>]*>/, '<c r="A1" t="inlineStr" s="7">'))
-        : path === "xl/worksheets/sheet2.xml"
-        ? new TextEncoder().encode(new TextDecoder().decode(data).replace(/<c r="A1"[^>]*>/, '<c r="A1" t="inlineStr" s="8">'))
-        : data
-    }));
+    })), ([path, data]) => {
+      let text = new TextDecoder().decode(data);
+      if (path === "xl/styles.xml") {
+        text = text.replace(/Calibri/g, "TemplateFont");
+      } else if (path === "xl/worksheets/sheet1.xml") {
+        text = text
+          .replace(/<worksheet\b/, '<worksheet xmlns:x14ac="http://schemas.microsoft.com/office/spreadsheetml/2009/9/ac"')
+          .replace(/<sheetFormatPr\b([^>]*)\/>/, '<sheetFormatPr$1 x14ac:dyDescent="0.2"/>')
+          .replace(/<c r="A1"[^>]*>/, '<c r="A1" t="inlineStr" s="7">');
+      } else if (path === "xl/worksheets/sheet2.xml") {
+        text = text.replace(/<c r="A1"[^>]*>/, '<c r="A1" t="inlineStr" s="8">');
+      } else {
+        return { path, data };
+      }
+      return { path, data: new TextEncoder().encode(text) };
+    });
     templateEntries.push({
       path: "xl/theme/theme1.xml",
       data: "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?><a:theme xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\" name=\"Template Theme\"/>"
@@ -157,6 +171,8 @@ describe("miku-md2xlsx core", () => {
     expect(entries.get("xl/workbook.xml")).toContain("Generated C");
     expect(entries.get("xl/workbook.xml")).not.toContain("Template A");
     expect(entries.get("xl/worksheets/sheet1.xml")).toContain("Generated body A");
+    expect(entries.get("xl/worksheets/sheet1.xml")).toContain('xmlns:x14ac="http://schemas.microsoft.com/office/spreadsheetml/2009/9/ac"');
+    expect(entries.get("xl/worksheets/sheet1.xml")).toContain('x14ac:dyDescent="0.2"');
     expect(entries.get("xl/worksheets/sheet2.xml")).toContain("Generated body B");
     expect(entries.get("xl/worksheets/sheet3.xml")).toContain("Generated body C");
     expect(entries.get("xl/worksheets/sheet1.xml")).not.toContain("Template-only A");
