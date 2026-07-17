@@ -1,5 +1,6 @@
 import { parseMarkdown } from "./markdown-parser.ts";
 import { buildSheets } from "./sheet-builder.ts";
+import { buildXlsx2mdDialectSheets } from "./xlsx2md-dialect.ts";
 import type { Md2XlsxOptions, SheetModel, WorkbookModel } from "./types.ts";
 
 export function markdownToWorkbook(markdown: string, options: Md2XlsxOptions = {}): WorkbookModel {
@@ -7,13 +8,16 @@ export function markdownToWorkbook(markdown: string, options: Md2XlsxOptions = {
   const headerRow = options.headerRow ?? true;
   const tableStyle = options.tableStyle ?? "bordered";
   const sheetHeadingDepth = options.sheetHeadingDepth ?? 1;
-  const sheets = buildSheets(tree, {
+  const buildOptions = {
     headerRow,
     tableStyle,
     sheetMode: options.sheetMode,
     sheetHeadingDepth,
     title: options.title
-  });
+  };
+  const sheets = options.inputDialect === "miku-xlsx2md"
+    ? buildXlsx2mdDialectSheets(tree, buildOptions)
+    : buildSheets(tree, buildOptions);
   return { sheets: normalizeInternalHyperlinkTargets(sheets), imageAssets: options.imageAssets, templateXlsx: options.templateXlsx };
 }
 

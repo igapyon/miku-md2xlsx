@@ -71,12 +71,12 @@ function shouldInsertBlankBeforeHeading(rows: RowModel[]): boolean {
   return previous.kind !== "blank" && previous.kind !== "heading" && previous.kind !== "title";
 }
 
-function sanitizeSheetName(name: string): string {
+export function sanitizeSheetName(name: string): string {
   const sanitized = name.replace(/[\[\]:*?/\\]/g, " ").replace(/\s+/g, " ").trim();
   return (sanitized || "Sheet").slice(0, 31);
 }
 
-function uniqueSheetName(base: string, used: Set<string>): string {
+export function uniqueSheetName(base: string, used: Set<string>): string {
   const clean = sanitizeSheetName(base);
   let candidate = clean;
   let suffix = 2;
@@ -89,7 +89,7 @@ function uniqueSheetName(base: string, used: Set<string>): string {
   return candidate;
 }
 
-function finalizeSheet(sheet: SheetModel): SheetModel {
+export function finalizeSheet(sheet: SheetModel): SheetModel {
   const rows = sheet.rows.length ? sheet.rows : [blankRow()];
   return {
     ...sheet,

@@ -38,6 +38,16 @@ describe("miku-xlsx2md generated Markdown fixture smoke", () => {
     expect(model.sheets[0].rows.some((row) => row.cells[0]?.value === "Sheet: xlsx2md-basic")).toBe(true);
   });
 
+  it("restores exact sheet names and table coordinates with the xlsx2md dialect", async () => {
+    const markdown = await readFixture("xlsx2md-basic-sample01.md");
+    const model = markdownToXlsxModel(markdown, { inputDialect: "miku-xlsx2md" });
+
+    expect(model.sheets.map((sheet) => sheet.name)).toEqual(["xlsx2md-basic"]);
+    expect(model.sheets[0].rows[11].cells[1].value).toBe("項番");
+    expect(model.sheets[0].rows[15].cells[6]?.value).toBeUndefined();
+    expect(model.sheets[0].rows.flatMap((row) => row.cells.map((cell) => cell.value))).not.toContain("Table: 001 (B12-F16)");
+  });
+
   it("keeps adjacent table sections from the xlsx2md table fixture visible", async () => {
     const markdown = await readFixture("table-basic-sample01.md");
     const model = markdownToXlsxModel(markdown);

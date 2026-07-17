@@ -1,5 +1,6 @@
 export type SheetMode = "single" | "heading";
 export type SheetHeadingDepth = 1 | 2;
+export type InputDialect = "markdown" | "miku-xlsx2md";
 export type TableStyleMode = "plain" | "bordered";
 export type CellStyleRole =
   | "normal"
@@ -24,6 +25,7 @@ export interface Md2XlsxImageAsset {
 }
 
 export interface Md2XlsxOptions {
+  inputDialect?: InputDialect;
   sheetMode?: SheetMode;
   sheetHeadingDepth?: SheetHeadingDepth;
   title?: string;

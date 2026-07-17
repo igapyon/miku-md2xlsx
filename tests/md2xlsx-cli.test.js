@@ -6,7 +6,7 @@ import { spawnSync } from "node:child_process";
 import { md2xlsx } from "../dist/core.js";
 import { writeZipPackage } from "../src/vendor/miku-ms-office-core-0.5.1.mjs";
 import { unzipStoredBinaryEntries, unzipStoredEntries } from "./helpers/zip.js";
-import { readSheetNames } from "./helpers/xlsx.js";
+import { readSheetNames, readWorksheetCells } from "./helpers/xlsx.js";
 import packageJson from "../package.json" with { type: "json" };
 
 describe("miku-md2xlsx CLI", () => {
@@ -31,6 +31,10 @@ describe("miku-md2xlsx CLI", () => {
     expect(result.stdout).toContain("Template mode notes:");
     expect(result.stdout).toContain("rightmost template sheet");
     expect(result.stdout).toContain("Sheet mode notes:");
+    expect(result.stdout).toContain("miku-xlsx2md dialect notes:");
+    expect(result.stdout).toContain("--input-dialect <name>");
+    expect(result.stdout).toContain("miku-xlsx2md is an early access feature");
+    expect(result.stdout).toContain("Early access: this input dialect");
     expect(result.stdout).toContain("--template <file>");
   });
 
@@ -60,6 +64,59 @@ describe("miku-md2xlsx CLI", () => {
 
     expect(result.status).toBe(2);
     expect(result.stderr).toContain("--table-style must be plain or bordered.");
+  });
+
+  it("rejects unsupported input dialect values", () => {
+    const result = spawnSync(process.execPath, [
+      "scripts/miku-md2xlsx-cli.mjs",
+      "tests/fixtures/smoke.md",
+      "--out",
+      "unused.xlsx",
+      "--input-dialect",
+      "invalid"
+    ], { encoding: "utf8" });
+
+    expect(result.status).toBe(2);
+    expect(result.stderr).toContain("--input-dialect must be markdown or miku-xlsx2md.");
+  });
+
+  it("rejects generic sheet options combined with the miku-xlsx2md dialect", () => {
+    const result = spawnSync(process.execPath, [
+      "scripts/miku-md2xlsx-cli.mjs",
+      "tests/fixtures/from-xlsx2md/xlsx2md-basic-sample01.md",
+      "--out",
+      "unused.xlsx",
+      "--input-dialect",
+      "miku-xlsx2md",
+      "--sheet-mode",
+      "heading"
+    ], { encoding: "utf8" });
+
+    expect(result.status).toBe(2);
+    expect(result.stderr).toContain("cannot be combined with --sheet-mode or --sheet-heading-depth");
+  });
+
+  it("reports malformed early access dialect markers", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "miku-md2xlsx-"));
+    const input = join(dir, "invalid-dialect.md");
+    const out = join(dir, "invalid-dialect.xlsx");
+    try {
+      await writeFile(input, "## Sheet:\n\ntext\n", "utf8");
+      const result = spawnSync(process.execPath, [
+        "scripts/miku-md2xlsx-cli.mjs",
+        input,
+        "--out",
+        out,
+        "--input-dialect",
+        "miku-xlsx2md"
+      ], { encoding: "utf8" });
+
+      expect(result.status).toBe(1);
+      expect(result.stderr).toContain("Invalid miku-xlsx2md dialect at Markdown line 1");
+      expect(result.stderr).toContain("Expected: ## Sheet: <name>");
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
   });
 
   it("writes an xlsx file", async () => {
@@ -184,6 +241,31 @@ describe("miku-md2xlsx CLI", () => {
       expect(result.status).toBe(0);
       const entries = unzipStoredEntries(await readFile(out));
       expect(readSheetNames(entries)).toEqual(["Sheet xlsx2md-basic"]);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("restores exact sheet names and table anchors in the miku-xlsx2md dialect", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "miku-md2xlsx-"));
+    const out = join(dir, "xlsx2md-dialect-out.xlsx");
+    try {
+      const result = spawnSync(process.execPath, [
+        "scripts/miku-md2xlsx-cli.mjs",
+        "tests/fixtures/from-xlsx2md/xlsx2md-basic-sample01.md",
+        "--out",
+        out,
+        "--input-dialect",
+        "miku-xlsx2md"
+      ], { encoding: "utf8" });
+
+      expect(result.status).toBe(0);
+      const entries = unzipStoredEntries(await readFile(out));
+      const cells = readWorksheetCells(entries);
+      expect(readSheetNames(entries)).toEqual(["xlsx2md-basic"]);
+      expect(cells).toContainEqual({ attributes: expect.objectContaining({ r: "B12" }), text: "項番" });
+      expect(cells.some((cell) => cell.text === "Book: xlsx2md-basic-sample01.xlsx")).toBe(false);
+      expect(cells.some((cell) => cell.text === "Table: 001 (B12-F16)")).toBe(false);
     } finally {
       await rm(dir, { recursive: true, force: true });
     }

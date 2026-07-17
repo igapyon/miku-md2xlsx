@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import { md2xlsx, markdownToXlsxModel } from "../dist/core.js";
 import { writeZipPackage } from "../src/vendor/miku-ms-office-core-0.5.1.mjs";
 import { unzipStoredBinaryEntries, unzipStoredEntries } from "./helpers/zip.js";
-import { readWorkbookXmlEntries, readWorksheetCells } from "./helpers/xlsx.js";
+import { readSheetNames, readWorkbookXmlEntries, readWorksheetCells, readWorksheetMergeRefs } from "./helpers/xlsx.js";
 
 describe("miku-md2xlsx core", () => {
   it("converts a Markdown table into workbook model rows", () => {
@@ -117,6 +117,64 @@ describe("miku-md2xlsx core", () => {
     expect(model.sheets[0].rows.some((row) => row.cells[0]?.value === "Book")).toBe(true);
     expect(model.sheets[0].rows.some((row) => row.cells[0]?.value === "intro")).toBe(true);
     expect(model.sheets[1].rows.some((row) => row.cells[0]?.value === "more")).toBe(true);
+  });
+
+  it("restores xlsx2md sheet names and anchored table structure", () => {
+    const markdown = `# Book: sample.xlsx
+
+## Sheet: Alpha
+
+intro
+
+### Table: 001 (B3-D5)
+
+| A | B | C |
+| --- | --- | --- |
+| one | merged | [←M←] |
+| two | [↑M↑] | [↑M↑] |
+
+## Sheet: 日本語
+
+### Table: 001 (A1-B2)
+
+| 項目 | 値 |
+| --- | --- |
+| 名前 | みく |
+`;
+    const model = markdownToXlsxModel(markdown, { inputDialect: "miku-xlsx2md" });
+    const xlsx = md2xlsx(markdown, { inputDialect: "miku-xlsx2md" });
+    const entries = readWorkbookXmlEntries(xlsx);
+
+    expect(model.sheets.map((sheet) => sheet.name)).toEqual(["Alpha", "日本語"]);
+    expect(model.sheets[0].rows[2].cells[1].value).toBe("A");
+    expect(model.sheets[0].rows[4].cells[3].value).toBe("[↑M↑]");
+    expect(model.sheets.flatMap((sheet) => sheet.rows.flatMap((row) => row.cells.map((cell) => cell.value)))).not.toContain("Book: sample.xlsx");
+    expect(readSheetNames(entries)).toEqual(["Alpha", "日本語"]);
+    expect(readWorksheetMergeRefs(entries, 1)).toEqual(["C4:D5"]);
+    expect(entries.get("xl/worksheets/sheet1.xml")).toContain('<dimension ref="A1:D5"/>');
+    expect(entries.get("xl/worksheets/sheet2.xml")).toContain('<dimension ref="A1:B2"/>');
+  });
+
+  it("rejects malformed xlsx2md dialect markers instead of guessing", () => {
+    expect(() => markdownToXlsxModel("## Sheet:\n\ntext\n", {
+      inputDialect: "miku-xlsx2md"
+    })).toThrow("Expected: ## Sheet: <name>");
+    expect(() => markdownToXlsxModel("## Sheet: Alpha\n\n### Table: 1 A1-B2\n", {
+      inputDialect: "miku-xlsx2md"
+    })).toThrow("Expected: ### Table: N (A1-C4)");
+  });
+
+  it("requires a table immediately after an xlsx2md Table marker", () => {
+    expect(() => markdownToXlsxModel(`## Sheet: Alpha
+
+### Table: 001 (A1-B2)
+
+intervening paragraph
+
+| A | B |
+| --- | --- |
+| 1 | 2 |
+`, { inputDialect: "miku-xlsx2md" })).toThrow("must be followed immediately by a Markdown table");
   });
 
   it("writes an xlsx package with workbook and worksheet xml", async () => {

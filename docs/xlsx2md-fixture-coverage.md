@@ -11,8 +11,16 @@ This document tracks how `workplace/miku-xlsx2md/tests/fixtures/` is reused as
 - Keep generated local assets under the same relative `assets/` layout used by
   `miku-xlsx2md`.
 - Regenerate with `npm run fixtures:from-xlsx2md`.
-- Run optional semantic round-trip checks with `npm run test:semantic-roundtrip`
-  when `workplace/miku-xlsx2md` is available.
+- Run semantic round-trip checks with `npm run test:semantic-roundtrip` when
+  `workplace/miku-xlsx2md` is available. These checks use
+  `--input-dialect miku-xlsx2md` and compare exact sheet names and declared
+  table anchor ranges after converting back with `miku-xlsx2md`.
+- Treat `--input-dialect miku-xlsx2md` as an early access compatibility
+  contract. Its syntax and restoration behavior may change while fixture
+  coverage and real-workbook validation are expanded.
+- Keep malformed marker and option-conflict cases in regression tests. Early
+  access dialect input fails explicitly when its structural contract is not
+  satisfied rather than silently falling back to generic Markdown placement.
 
 ## Current Coverage
 
@@ -61,8 +69,8 @@ This document tracks how `workplace/miku-xlsx2md/tests/fixtures/` is reused as
 - Regenerate committed Markdown/assets with `npm run fixtures:from-xlsx2md`.
 - Add at least one semantic assertion when a new fixture category introduces a
   new Markdown pattern.
-- Expand `tests/semantic-roundtrip.mjs` only with semantic marker/value checks;
-  do not compare full Markdown text.
+- Expand `tests/semantic-roundtrip.mjs` with semantic structure and value
+  checks; do not compare full Markdown text.
 - For image round-trip checks, prefer image marker/file-name preservation over
   exact regenerated asset path equality.
 - For rich text round-trip checks, prefer representative plain text, links, and
