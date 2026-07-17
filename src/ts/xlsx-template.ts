@@ -73,8 +73,9 @@ export function templateGeneratedWorksheetXml(template: XlsxTemplateParts | unde
   const sheetFormat = extractSelfClosing(baseXml, "sheetFormatPr") ?? extractSelfClosing(generatedXml, "sheetFormatPr") ?? "";
   const cols = extractBlock(baseXml, "cols") ?? extractBlock(generatedXml, "cols") ?? "";
   const pageMargins = extractSelfClosing(baseXml, "pageMargins") ?? "";
+  const worksheetStartTag = mergedWorksheetStartTag(baseXml, generatedXml);
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+${worksheetStartTag}
 ${generatedDimension ?? ""}
 ${sheetViews}
 ${sheetFormat}
@@ -150,6 +151,25 @@ function extractBlock(xml: string, localName: string): string | undefined {
 
 function extractSelfClosing(xml: string, localName: string): string | undefined {
   return xml.match(new RegExp(`<${localName}\\b[^>]*/>`))?.[0];
+}
+
+function mergedWorksheetStartTag(baseXml: string, generatedXml: string): string {
+  const fallback = '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">';
+  const baseTag = baseXml.match(/<worksheet\b[^>]*>/)?.[0];
+  const generatedTag = generatedXml.match(/<worksheet\b[^>]*>/)?.[0];
+  if (!baseTag) {
+    return generatedTag ?? fallback;
+  }
+  if (!generatedTag) {
+    return baseTag;
+  }
+
+  const declaredNamespaces = new Set(Array.from(baseTag.matchAll(/\s(xmlns(?::[A-Za-z_][\w.-]*)?)="[^"]*"/g), (match) => match[1]));
+  const missingNamespaces = Array.from(generatedTag.matchAll(/\s(xmlns(?::[A-Za-z_][\w.-]*)?)="[^"]*"/g))
+    .filter((match) => !declaredNamespaces.has(match[1]))
+    .map((match) => match[0])
+    .join("");
+  return missingNamespaces ? baseTag.replace(/>$/, `${missingNamespaces}>`) : baseTag;
 }
 
 function mergeGeneratedSheetDataStyles(generatedSheetData: string, templateWorksheetXml: string): string {
