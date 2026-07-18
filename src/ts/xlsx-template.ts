@@ -3,7 +3,7 @@ import {
   readZipPackage,
   type ZipEntry,
   type ZipEntryInput
-} from "../vendor/miku-ms-office-core-0.5.1.mjs";
+} from "../vendor/miku-ms-office-core-0.6.0.mjs";
 
 interface TemplateSheet {
   name: string;

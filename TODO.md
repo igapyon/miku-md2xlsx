@@ -155,9 +155,9 @@
   AI-agent-readable usage.
 - CLI option validation rejects unsupported `--sheet-mode` and `--table-style`
   values, and the `--version` test compares CLI output with `package.json`.
-- Vendored `miku-ms-office-core` is updated from `0.5.0` to `0.5.1`.
+- Vendored `miku-ms-office-core` is updated from `0.5.1` to `0.6.0`.
 - The unused pre-core `src/ts/zip-io.ts` ZIP writer is removed.
-- Package version is updated to `0.7.0`.
+- Package version is updated to `0.9.5`.
 - Verification last run: `npm test`, `npm run build:all`,
   `npm run smoke:version`, `npm run smoke:bundle`,
   `npm run smoke:runtime`, `npm run test:semantic-roundtrip`, and

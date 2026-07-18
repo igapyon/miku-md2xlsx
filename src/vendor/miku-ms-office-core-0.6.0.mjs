@@ -94,7 +94,10 @@ function escapeXmlAttribute(value) {
   return escapeXmlText(value).replace(/"/g, "&quot;").replace(/'/g, "&apos;");
 }
 function sanitizeXmlText(value) {
-  return value.replace(/[^\u0009\u000A\u000D\u0020-\uD7FF\uE000-\uFFFD]/g, "");
+  return value.replace(
+    /[^\u0009\u000A\u000D\u0020-\uD7FF\uE000-\uFFFD\u{10000}-\u{10FFFF}]/gu,
+    ""
+  );
 }
 function parseXmlAttributes(tag) {
   const attributes = /* @__PURE__ */ new Map();
@@ -563,4 +566,4 @@ export {
   writeUint32,
   writeZipPackage
 };
-//# sourceMappingURL=miku-ms-office-core-0.5.1.mjs.map
+//# sourceMappingURL=miku-ms-office-core-0.6.0.mjs.map
