@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { md2xlsx } from "../dist/core.js";
-import { writeZipPackage } from "../src/vendor/miku-ms-office-core-0.5.1.mjs";
+import { writeZipPackage } from "../src/vendor/miku-ms-office-core-0.6.0.mjs";
 import { unzipStoredBinaryEntries, unzipStoredEntries } from "./helpers/zip.js";
 import { readSheetNames, readWorksheetCells } from "./helpers/xlsx.js";
 import packageJson from "../package.json" with { type: "json" };

@@ -3,7 +3,7 @@ import {
   buildOpcRelationshipsXml,
   writeZipPackage,
   type ZipEntryInput
-} from "../vendor/miku-ms-office-core-0.5.1.mjs";
+} from "../vendor/miku-ms-office-core-0.6.0.mjs";
 import type { SheetModel, WorkbookModel } from "./types.ts";
 import {
   collectSheetDrawings,

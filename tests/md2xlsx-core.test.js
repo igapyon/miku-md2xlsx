@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFile } from "node:fs/promises";
 import { md2xlsx, markdownToXlsxModel } from "../dist/core.js";
-import { writeZipPackage } from "../src/vendor/miku-ms-office-core-0.5.1.mjs";
+import { writeZipPackage } from "../src/vendor/miku-ms-office-core-0.6.0.mjs";
 import { unzipStoredBinaryEntries, unzipStoredEntries } from "./helpers/zip.js";
 import { readSheetNames, readWorkbookXmlEntries, readWorksheetCells, readWorksheetMergeRefs } from "./helpers/xlsx.js";
 
@@ -67,6 +67,18 @@ describe("miku-md2xlsx core", () => {
     const cells = readWorksheetCells(entries);
 
     expect(cells.some((cell) => cell.text === "😀 🐇 𠮷野家")).toBe(true);
+  });
+
+  it("keeps only XML 1.0 character ranges in worksheet text", () => {
+    const validBoundaries = "\uD7FF\uE000\uFFFD\u{10000}\u{10FFFF}";
+    const invalidCharacters = "before\uD800middle\uDC00\uFFFE\uFFFFafter";
+    const xlsx = md2xlsx(
+      `| kind | value |\n| --- | --- |\n| Valid | ${validBoundaries} |\n| Invalid | ${invalidCharacters} |\n`
+    );
+    const cells = readWorksheetCells(readWorkbookXmlEntries(xlsx));
+
+    expect(cells.some((cell) => cell.text === validBoundaries)).toBe(true);
+    expect(cells.some((cell) => cell.text === "beforemiddleafter")).toBe(true);
   });
 
   it("uses wider column hints for text-heavy block rows", () => {
