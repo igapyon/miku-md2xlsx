@@ -13,6 +13,21 @@ intended to recreate a pixel-perfect Excel layout.
 
 ## Quick Start
 
+### GitHub Release Asset
+
+Download `miku-md2xlsx-0.10.0.mjs` from the GitHub Release, then run it directly
+from the download directory:
+
+```bash
+node miku-md2xlsx-0.10.0.mjs ./sample.md --out ./sample.xlsx
+node miku-md2xlsx-0.10.0.mjs --help
+```
+
+The release asset requires Node.js but does not require a source checkout or
+`npm install`.
+
+### Repository Checkout
+
 Install dependencies once:
 
 ```bash
@@ -62,6 +77,7 @@ npm run cli -- --version
 
 ## Generated Workbook Behavior
 
+- Generated XLSX package entries use ZIP DEFLATE compression.
 - Markdown headings become bold worksheet rows. Heading levels `#` through
   `######` use different font sizes.
 - Markdown tables become worksheet rows with basic header and border styling.

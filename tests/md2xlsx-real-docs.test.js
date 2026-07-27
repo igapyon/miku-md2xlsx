@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFile } from "node:fs/promises";
 import { markdownToXlsxModel, md2xlsx } from "../dist/core.js";
 import { readSheetNames, readWorkbookXmlEntries, readWorksheetValues } from "./helpers/xlsx.js";
+import packageJson from "../package.json" with { type: "json" };
 
 function flatten(values) {
   return values.flat().join("\n");
@@ -19,6 +20,7 @@ describe("repository Markdown document coverage", () => {
     expect(values).toContain("What It Converts");
     expect(values).toContain("CLI Options");
     expect(values).toContain("npm run cli -- ./sample.md --out ./sample.xlsx");
+    expect(values).toContain(`node miku-md2xlsx-${packageJson.version}.mjs ./sample.md --out ./sample.xlsx`);
   });
 
   it("converts the handoff document with second-level sheet splitting", async () => {

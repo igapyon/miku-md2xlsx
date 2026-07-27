@@ -175,5 +175,7 @@ export function writeXlsx(workbook: WorkbookModel): Uint8Array {
       data: image.asset.data
     })))
   ];
-  return writeZipPackage(entries);
+  return writeZipPackage(
+    entries.map((entry) => ({ ...entry, compression: "deflate" as const }))
+  );
 }

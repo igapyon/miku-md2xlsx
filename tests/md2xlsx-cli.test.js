@@ -21,11 +21,16 @@ describe("miku-md2xlsx CLI", () => {
     const result = spawnSync(process.execPath, ["scripts/miku-md2xlsx-cli.mjs", "--help"], { encoding: "utf8" });
 
     expect(result.status).toBe(0);
+    expect(result.stderr).toBe("");
     expect(result.stdout).toContain("converts a Markdown file into an Excel .xlsx workbook");
+    expect(result.stdout).toContain("node miku-md2xlsx-cli.mjs <input.md> --out <output.xlsx>");
     expect(result.stdout).toContain("Examples:");
     expect(result.stdout).toContain("Outputs:");
+    expect(result.stdout).toContain("Successful conversion is silent.");
+    expect(result.stdout).toContain("There is no --summary output mode");
     expect(result.stdout).toContain("Overwrite behavior:");
     expect(result.stdout).toContain("Exit codes:");
+    expect(result.stdout).toContain("no-argument help");
     expect(result.stdout).toContain("Markdown handling notes:");
     expect(result.stdout).toContain("Table cell values are written as strings.");
     expect(result.stdout).toContain("Template mode notes:");
@@ -36,6 +41,17 @@ describe("miku-md2xlsx CLI", () => {
     expect(result.stdout).toContain("miku-xlsx2md is an early access feature");
     expect(result.stdout).toContain("Early access: this input dialect");
     expect(result.stdout).toContain("--template <file>");
+    expect(result.stdout).not.toContain("npm run");
+    expect(result.stdout).not.toContain("dist/");
+    expect(result.stdout).not.toContain("bundle/");
+  });
+
+  it("prints help with no arguments", () => {
+    const result = spawnSync(process.execPath, ["scripts/miku-md2xlsx-cli.mjs"], { encoding: "utf8" });
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain("Usage:");
+    expect(result.stderr).toBe("");
   });
 
   it("rejects unsupported sheet mode values", () => {
@@ -49,6 +65,7 @@ describe("miku-md2xlsx CLI", () => {
     ], { encoding: "utf8" });
 
     expect(result.status).toBe(2);
+    expect(result.stdout).toBe("");
     expect(result.stderr).toContain("--sheet-mode must be single or heading.");
   });
 
@@ -121,7 +138,7 @@ describe("miku-md2xlsx CLI", () => {
 
   it("writes an xlsx file", async () => {
     const dir = await mkdtemp(join(tmpdir(), "miku-md2xlsx-"));
-    const out = join(dir, "out.xlsx");
+    const out = join(dir, "created-parent", "out.xlsx");
     try {
       const result = spawnSync(process.execPath, [
         "scripts/miku-md2xlsx-cli.mjs",
@@ -133,6 +150,8 @@ describe("miku-md2xlsx CLI", () => {
       ], { encoding: "utf8" });
 
       expect(result.status).toBe(0);
+      expect(result.stdout).toBe("");
+      expect(result.stderr).toBe("");
       const entries = unzipStoredEntries(await readFile(out));
       expect(entries.get("xl/workbook.xml")).toContain("売上メモ");
     } finally {

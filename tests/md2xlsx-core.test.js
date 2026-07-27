@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFile } from "node:fs/promises";
 import { md2xlsx, markdownToXlsxModel } from "../dist/core.js";
 import { writeZipPackage } from "../src/vendor/miku-ms-office-core-0.6.0.mjs";
-import { unzipStoredBinaryEntries, unzipStoredEntries } from "./helpers/zip.js";
+import { unzipStoredBinaryEntries, unzipStoredEntries, zipCompressionMethods } from "./helpers/zip.js";
 import { readSheetNames, readWorkbookXmlEntries, readWorksheetCells, readWorksheetMergeRefs } from "./helpers/xlsx.js";
 
 describe("miku-md2xlsx core", () => {
@@ -193,6 +193,10 @@ intervening paragraph
     const markdown = await readFile("tests/fixtures/smoke.md", "utf8");
     const xlsx = md2xlsx(markdown, { sheetMode: "heading" });
     const entries = unzipStoredEntries(xlsx);
+    const compressionMethods = zipCompressionMethods(xlsx);
+    expect(compressionMethods.local.length).toBeGreaterThan(0);
+    expect(new Set(compressionMethods.local)).toEqual(new Set([8]));
+    expect(compressionMethods.central).toEqual(compressionMethods.local);
 
     expect(entries.has("[Content_Types].xml")).toBe(true);
     expect(entries.has("xl/workbook.xml")).toBe(true);
@@ -234,6 +238,10 @@ intervening paragraph
     const sheet2Cells = readWorksheetCells(entries, 2);
     const sheet3Cells = readWorksheetCells(entries, 3);
 
+    const compressionMethods = zipCompressionMethods(xlsx);
+    expect(compressionMethods.local.length).toBeGreaterThan(0);
+    expect(new Set(compressionMethods.local)).toEqual(new Set([8]));
+    expect(compressionMethods.central).toEqual(compressionMethods.local);
     expect(entries.get("xl/styles.xml")).toContain("TemplateFont");
     expect(entries.get("xl/theme/theme1.xml")).toContain("Template Theme");
     expect(entries.get("xl/workbook.xml")).toContain("Generated A");
