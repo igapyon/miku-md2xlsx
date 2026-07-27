@@ -8,8 +8,8 @@ import packageJson from "../package.json" with { type: "json" };
 const execFileAsync = promisify(execFile);
 const bundlePath = "bundle/miku-md2xlsx.mjs";
 
-async function runBundle(args) {
-  return execFileAsync(process.execPath, [bundlePath, ...args], {
+async function runBundle(args, executablePath = bundlePath) {
+  return execFileAsync(process.execPath, [executablePath, ...args], {
     encoding: "utf8"
   });
 }
@@ -26,6 +26,13 @@ async function main() {
   }
 
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "miku-md2xlsx-bundle-"));
+  const suffixedBundlePath = path.join(tempDir, `miku-md2xlsx-${packageJson.version}.7.mjs`);
+  await fs.copyFile(bundlePath, suffixedBundlePath);
+  const suffixedHelp = await runBundle(["--help"], suffixedBundlePath);
+  if (!suffixedHelp.stdout.includes(`node miku-md2xlsx-${packageJson.version}.7.mjs <input.md>`)) {
+    throw new Error("Bundle help did not use the actual dot-suffixed Release Asset filename.");
+  }
+
   const inputPath = path.join(tempDir, "sample.md");
   const outputPath = path.join(tempDir, "sample.xlsx");
   await fs.writeFile(inputPath, "# Bundle Smoke\n\n| A | B |\n| --- | --- |\n| 1 | 2 |\n", "utf8");

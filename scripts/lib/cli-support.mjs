@@ -1,34 +1,36 @@
 import { readFile, writeFile } from "node:fs/promises";
-import { dirname, isAbsolute, resolve } from "node:path";
+import { basename, dirname, isAbsolute, resolve } from "node:path";
 import { mkdir } from "node:fs/promises";
 import { markdownToXlsxModel, md2xlsx } from "../../dist/core.js";
 import packageJson from "../../package.json" with { type: "json" };
 
+const executableName = basename(process.argv[1] ?? "miku-md2xlsx.mjs");
 const usage = `miku-md2xlsx converts a Markdown file into an Excel .xlsx workbook.
 It is a local file converter: the input Markdown is read from disk and the
 generated workbook is written to the --out path.
 
 Usage:
-  npm run cli -- <input.md> --out <output.xlsx> [options]
-  node bundle/miku-md2xlsx.mjs <input.md> --out <output.xlsx> [options]
-  npm run cli -- --version
-  npm run cli -- --help
+  node ${executableName} <input.md> --out <output.xlsx> [options]
+  node ${executableName} --version
+  node ${executableName} --help
 
 Default behavior:
   The input file is read as UTF-8 Markdown. The output workbook is written to
   --out. Parent directories for --out are created when missing.
+  With no arguments, the command prints this help and exits with code 0.
 
 Inputs:
   <input.md>                Input Markdown file path
 
 Outputs:
-  --out <file> is the generated Excel .xlsx workbook. Terminal stdout is only
-  used for --help and --version; conversion progress is not a machine-readable
-  output contract.
+  output file  --out <file> is the generated Excel .xlsx workbook.
+  stdout       Help and version text only. Successful conversion is silent.
+  stderr       CLI usage errors and conversion or file-system failures.
+  There is no --summary output mode or machine-readable terminal output.
 
 Generated artifacts:
-  The generated workbook is safe to regenerate from the Markdown input and CLI
-  options. Build commands may also generate dist/ and bundle/ artifacts.
+  The conversion generates only the .xlsx file specified by --out. It is safe
+  to regenerate from the Markdown input and CLI options.
 
 Overwrite behavior:
   Existing --out files are overwritten.
@@ -38,7 +40,7 @@ Diagnostics / warnings:
   remote, and absolute image paths remain visible as workbook text references.
 
 Exit codes:
-  0  success, --help, or --version
+  0  successful conversion, no-argument help, --help, or --version
   1  conversion or file-system failure
   2  invalid CLI usage
 
@@ -59,11 +61,11 @@ Options:
   --version                 Show version
 
 Examples:
-  npm run cli -- ./sample.md --out ./sample.xlsx
-  npm run cli -- ./sample.md --out ./sample.xlsx --template ./template.xlsx
-  npm run cli -- ./book.md --out ./book.xlsx --input-dialect miku-xlsx2md
-  npm run cli -- ./sample.md --out ./sample.xlsx --sheet-mode heading
-  npm run cli -- ./book.md --out ./book.xlsx --sheet-mode heading --sheet-heading-depth 2
+  node ${executableName} ./sample.md --out ./sample.xlsx
+  node ${executableName} ./sample.md --out ./sample.xlsx --template ./template.xlsx
+  node ${executableName} ./book.md --out ./book.xlsx --input-dialect miku-xlsx2md
+  node ${executableName} ./sample.md --out ./sample.xlsx --sheet-mode heading
+  node ${executableName} ./book.md --out ./book.xlsx --sheet-mode heading --sheet-heading-depth 2
 
 Markdown handling notes:
   - Headings, paragraphs, lists, tables, code blocks, horizontal rules, links,
