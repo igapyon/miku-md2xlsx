@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import { readFile } from "node:fs/promises";
 import { markdownToXlsxModel, md2xlsx } from "../dist/core.js";
 import { readSheetNames, readWorkbookXmlEntries, readWorksheetValues } from "./helpers/xlsx.js";
-import packageJson from "../package.json" with { type: "json" };
 
 function flatten(values) {
   return values.flat().join("\n");
@@ -11,6 +10,9 @@ function flatten(values) {
 describe("repository Markdown document coverage", () => {
   it("converts README Markdown into a workbook without dropping representative sections", async () => {
     const markdown = await readFile("README.md", "utf8");
+    const releaseAssetCommand = markdown.match(
+      /node (miku-md2xlsx-\d+\.\d+\.\d+\.mjs \.\/sample\.md --out \.\/sample\.xlsx)/
+    )?.[1];
     const xlsx = md2xlsx(markdown, { sheetMode: "heading" });
     const entries = readWorkbookXmlEntries(xlsx);
     const values = flatten(readWorksheetValues(entries));
@@ -20,7 +22,8 @@ describe("repository Markdown document coverage", () => {
     expect(values).toContain("What It Converts");
     expect(values).toContain("CLI Options");
     expect(values).toContain("npm run cli -- ./sample.md --out ./sample.xlsx");
-    expect(values).toContain(`node miku-md2xlsx-${packageJson.version}.mjs ./sample.md --out ./sample.xlsx`);
+    expect(releaseAssetCommand).toBeDefined();
+    expect(values).toContain(`node ${releaseAssetCommand}`);
   });
 
   it("converts the handoff document with second-level sheet splitting", async () => {

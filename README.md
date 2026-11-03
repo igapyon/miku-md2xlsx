@@ -253,7 +253,7 @@ This repository provides Node.js CLI and runtime artifacts. It does not
 provide or claim a browser-ready build. Browser support is a separate
 compatibility question and has not been established by this project.
 
-The source version in `package.json` is `1.0.0`. The latest published GitHub
+The source version in `package.json` is `1.0.1`. The latest published GitHub
 Release is `v0.10.0`; versioned release assets are generated from a published
 release tag, so a source version alone does not mean a matching asset has been
 published.
