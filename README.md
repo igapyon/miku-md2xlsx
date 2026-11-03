@@ -15,8 +15,9 @@ intended to recreate a pixel-perfect Excel layout.
 
 ### GitHub Release Asset
 
-Download `miku-md2xlsx-0.10.0.mjs` from the GitHub Release, then run it directly
-from the download directory:
+Download the CLI asset `miku-md2xlsx-0.10.0.mjs` from the [latest published
+GitHub Release](https://github.com/igapyon/miku-md2xlsx/releases/latest), then
+run it directly from the download directory:
 
 ```bash
 node miku-md2xlsx-0.10.0.mjs ./sample.md --out ./sample.xlsx
@@ -240,11 +241,24 @@ formulas, charts, drawings, or table objects must remain live after generation.
 
 ## Current Status
 
-This repository is in active development. It creates `.xlsx` files from
-Markdown document blocks, tables, links, common inline styles, local image
-references, and selected `miku-xlsx2md` compatibility markers.
+The Node.js conversion core and CLI are usable for the Markdown features
+described in [What It Converts](#what-it-converts), along with the selected
+`miku-xlsx2md` compatibility markers described above. They create practical
+`.xlsx` workbooks; they are not a reversible Excel converter and do not
+reproduce the original workbook layout pixel for pixel. Known limitations are
+described with the relevant features, and additional input, image, and template
+coverage is tracked in [TODO.md](./TODO.md).
 
-See [TODO.md](./TODO.md) for follow-up work.
+This repository provides Node.js CLI and runtime artifacts. It does not
+provide or claim a browser-ready build. Browser support is a separate
+compatibility question and has not been established by this project.
+
+The source version in `package.json` is `1.0.0`. The latest published GitHub
+Release is `v0.10.0`; versioned release assets are generated from a published
+release tag, so a source version alone does not mean a matching asset has been
+published.
+
+See [TODO.md](./TODO.md) for current follow-up work.
 
 Developer handoff notes are in [docs/handoff-from-xlsx2md.md](./docs/handoff-from-xlsx2md.md).
 Shared miku-soft reference information is in
